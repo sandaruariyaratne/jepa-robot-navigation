@@ -9,7 +9,7 @@ from environment import DEFAULT_WALLS, GridWorld, distances_to_goal
 from multimap.collect import collect, coverage
 from multimap.evaluate import graph_metrics, navigate
 from multimap.maps import generate_maps, is_valid, load_maps, save_maps, split_maps
-from multimap.train import cell_ids, codebooks, decoded_robot_cells, snap_in_map, wall_accuracy, windows
+from multimap.train import cell_ids, codebooks, decoded_robot_cells, latent_table, snap_in_map, wall_accuracy, windows
 from planning.true_model import TrueModel
 
 CFG = load_config(ROOT / "config_multimap.yaml")
@@ -168,3 +168,44 @@ def test_chunked_new_map_metrics_equal_the_unchunked_ones(small):
     assert parts["prediction"]["mse_model"] == pytest.approx(whole["prediction"]["mse_model"], rel=1e-5)
     assert parts["collision"]["accuracy"] == pytest.approx(whole["collision"]["accuracy"])
     assert parts["collision"]["precision"] == pytest.approx(whole["collision"]["precision"])
+
+
+def test_maze_selection_keeps_the_most_winding_layouts(tmp_path):
+    from multimap.new_maps import mean_distance, new_maps_and_data
+
+    cfg = load_config(ROOT / "config_multimap.yaml")
+    cfg["multimap"]["maze_maps"].update(n_maps=5, pool=60, episodes_per_map=1, steps_per_episode=5,
+                                        maps_path=str(tmp_path / "m.json"), data_path=str(tmp_path / "t.npz"))
+    maps, data, old = new_maps_and_data(cfg, "maze_maps")
+    pool = generate_maps(60, cfg["multimap"]["maze_maps"]["seed"], 8, 14, exclude=[m.walls for m in old])
+    best = sorted((mean_distance(m) for m in pool), reverse=True)[:5]
+    assert [mean_distance(m) for m in maps] == pytest.approx(best)
+    assert all(8 <= len(m.walls) <= 14 for m in maps) and data["map_id"].max() == 4
+
+
+def test_calibrated_threshold_is_the_validation_quantile_of_correct_one_step_snaps(small, tmp_path, monkeypatch):
+    import multimap.calibrate as cal
+    from models import Encoder, Predictor
+
+    sub, data = small
+    torch.manual_seed(0)
+    enc, pred = Encoder(8), Predictor(8, 4, [16], 0.1)
+    torch.save({"state_dict": enc.state_dict(), "latent_dim": 8, "input_shape": [3, 40, 48]}, tmp_path / "e.pt")
+    torch.save({"state_dict": pred.state_dict(), "latent_dim": 8, "n_actions": 4, "hidden": [16],
+                "median_one_step_error": 0.5}, tmp_path / "p.pt")
+    save_maps(sub, {"train": [0], "val": [1, 2], "test": []}, tmp_path / "m.json")
+    monkeypatch.setattr(cal, "load", lambda _: data)
+    cfg = load_config(ROOT / "config_multimap.yaml")
+    mm = cfg["multimap"]
+    mm.update(maps_path=str(tmp_path / "m.json"), calibration={"quantile": 0.9, "horizon": 2})
+    mm["encoder"]["checkpoint"], mm["predictor"]["checkpoint"] = str(tmp_path / "e.pt"), str(tmp_path / "p.pt")
+    out = cal.calibrate(cfg, verbose=False)
+
+    table = latent_table(enc.freeze(), data)
+    cb, mask = codebooks(table, data, len(sub))
+    t = windows(data, [1, 2], 2)
+    with torch.no_grad():
+        cell, dist = snap_in_map(pred.eval().rollout(table[t["obs"]], t["action"]), t["map"], cb, mask)
+    ok = (cell[:, 0] == t["next_cell"][:, 0]).numpy()
+    assert out["threshold"] == pytest.approx(float(np.quantile(dist[:, 0].numpy()[ok], 0.9)))
+    assert out["default_threshold"] == pytest.approx(3 * 0.5) and [s["step"] for s in out["steps"]] == [1, 2]

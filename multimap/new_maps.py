@@ -30,7 +30,7 @@ import torch
 
 from config import load_config, resolve
 from data.collect_data import save_npz
-from environment import GridWorld
+from environment import GridWorld, distances_to_goal
 from evaluation.ladder import diagnose
 from evaluation.navigation_test import report
 from models.encoder import load_encoder
@@ -65,17 +65,33 @@ def complete_frames(data: dict, maps) -> int:
     return len(extra)
 
 
-def new_maps_and_data(cfg: dict):
-    """Generate (or reload) the 500 layouts and their random-action episodes."""
-    mm, nm = cfg["multimap"], cfg["multimap"]["new_maps"]
+def mean_distance(grid) -> float:
+    """Average shortest-path length to the goal over the start cells: how winding the layout is."""
+    d = distances_to_goal(grid)
+    return float(d[d > 0].mean())
+
+
+def new_maps_and_data(cfg: dict, key: str = "new_maps"):
+    """Generate (or reload) one test set of layouts and their random-action episodes.
+
+    `multimap.<key>` may set its own min_walls / max_walls (default: the experiment's) and
+    `select: longest_paths` with `pool`: draw `pool` valid layouts, keep the `n_maps` with the
+    longest average path to the goal (maze-like corridors)."""
+    mm, nm = cfg["multimap"], cfg["multimap"][key]
     maps_path, data_path = resolve(nm["maps_path"]), resolve(nm["data_path"])
     old, _ = load_maps(resolve(mm["maps_path"]))
     if maps_path.exists() and data_path.exists():
         maps, _ = load_maps(maps_path)
         data = load(data_path)
     else:
-        maps = generate_maps(nm["n_maps"], nm["seed"], mm["min_walls"], mm["max_walls"],
-                             exclude=[m.walls for m in old])
+        lo, hi = nm.get("min_walls", mm["min_walls"]), nm.get("max_walls", mm["max_walls"])
+        exclude = [m.walls for m in old]
+        if nm.get("select") == "longest_paths":
+            pool = generate_maps(nm["pool"], nm["seed"], lo, hi, exclude=exclude, max_tries=50 * nm["pool"])
+            order = np.argsort([-mean_distance(m) for m in pool], kind="stable")
+            maps = [pool[i] for i in order[: nm["n_maps"]]]
+        else:
+            maps = generate_maps(nm["n_maps"], nm["seed"], lo, hi, exclude=exclude, max_tries=50 * nm["n_maps"] + 100_000)
         save_maps(maps, {"train": [], "val": [], "test": list(range(len(maps)))}, maps_path)
         maps, _ = load_maps(maps_path)
         data = collect(maps, nm["episodes_per_map"], nm["steps_per_episode"], nm["seed"], cfg["data"]["cell_px"])
@@ -128,11 +144,15 @@ def chunked_metrics(predictor, table, data, ids, cb, mask, horizon: int, chunk: 
 
 def render(res: dict, label: str) -> str:
     n = res["n_maps"]
-    L = [f"# {n} new maps: {label}, no retraining\n",
+    L = [f"# {n} {res.get('title', 'new maps')}: {label}, no retraining\n",
          f"{n} layouts never used for training, validation or testing (seed {res['seed']}; all 100 experiment layouts "
          f"and the reference map excluded), {res['walls_min']}-{res['walls_max']} walls, goal (5,0). Navigation starts "
          f"from every free cell of every map ({res['starts']} start cells), seeds {res['nav_seeds']} "
-         f"-> {res['navigation']['Full']['episodes']} episodes per rung.\n",
+         f"-> {res['navigation']['Full']['episodes']} episodes per rung."
+         + (f" Average shortest path to the goal {res['mean_distance']:.1f} steps, longest {res['longest_path']}."
+            if "mean_distance" in res else "")
+         + (f" Unknown threshold {res['unknown_threshold']['threshold']:.2f} ({res['unknown_threshold']['rule']})."
+            if "unknown_threshold" in res else "") + "\n",
          "## Headline\n", "| metric | result |", "|---|---|"]
     f = res["navigation"]["Full"]
     c = res["collision"]
@@ -198,12 +218,15 @@ def render(res: dict, label: str) -> str:
 def main() -> None:
     parser = argparse.ArgumentParser(description="Evaluate a trained multi-map model on 500 new layouts.")
     parser.add_argument("--config", type=Path, default=None)
+    parser.add_argument("--set", default="new_maps", help="test set under `multimap:` (new_maps, hard_maps, maze_maps)")
+    parser.add_argument("--threshold", choices=["default", "calibrated"], default="default",
+                        help="unknown threshold: 3 x median one-step error, or calibrated on the validation maps")
     args = parser.parse_args()
     cfg = load_config(args.config)
-    mm, nm = cfg["multimap"], cfg["multimap"]["new_maps"]
+    mm, nm = cfg["multimap"], cfg["multimap"][args.set]
     label = mm.get("label", "v1 model")
 
-    maps, data, old = new_maps_and_data(cfg)
+    maps, data, old = new_maps_and_data(cfg, args.set)
     added = complete_frames(data, maps)
     cov = coverage(data, maps)
     print(f"{len(maps)} new maps (none of the {len(old)} experiment layouts), {len(data['action'])} transitions, "
@@ -217,14 +240,26 @@ def main() -> None:
     cb, mask = codebooks(table, data, len(maps))
     ids = list(range(len(maps)))
     factor = cfg["imagination"]["unknown_factor"]
+    median_err = pck["median_one_step_error"]
+    thr = {"kind": "default", "threshold": factor * median_err, "rule": f"{factor:g} x median one-step error"}
+    if args.threshold == "calibrated":
+        from .calibrate import load_threshold
+        cal = load_threshold(cfg)
+        thr = {"kind": "calibrated", "threshold": cal["threshold"], "rule": cal["rule"]}
+        median_err, factor = cal["threshold"], 1.0          # WorldModel: threshold = factor x median_err
+    name = args.set + ("_calibrated" if args.threshold == "calibrated" else "")
+    print(f"Unknown threshold {thr['threshold']:.3f} ({thr['rule']})", flush=True)
 
-    res = {"label": label, "n_maps": len(maps), "seed": nm["seed"], "nav_seeds": nm["nav_seeds"],
+    dist = [mean_distance(m) for m in maps]
+    res = {"label": label, "set": args.set, "unknown_threshold": thr, "title": nm.get("title", "new maps"), "n_maps": len(maps),
+           "seed": nm["seed"], "nav_seeds": nm["nav_seeds"],
+           "mean_distance": float(np.mean(dist)), "longest_path": int(max(distances_to_goal(m).max() for m in maps)),
            "walls_min": min(len(m.walls) for m in maps), "walls_max": max(len(m.walls) for m in maps),
            "starts": sum(len(m.start_cells()) for m in maps), "frames_rendered": added,
            **chunked_metrics(predictor, table, data, ids, cb, mask, mm["predictor"]["eval_horizon"])}
     per_map, episodes, by_walls, maps_all_optimal, worst = [], defaultdict(list), defaultdict(list), 0, []
     for m, grid in enumerate(maps):
-        world, goal_frame = world_for_map(m, grid, encoder, predictor, table, data, pck["median_one_step_error"], factor)
+        world, goal_frame = world_for_map(m, grid, encoder, predictor, table, data, median_err, factor)
         gm = graph_metrics(world, grid, goal_frame)
         per_map.append(gm)
         eps = navigate(world, grid, goal_frame, cfg, nm["nav_seeds"])
@@ -260,10 +295,10 @@ def main() -> None:
     out = resolve(mm["evaluation"]["results_dir"])
     out.mkdir(parents=True, exist_ok=True)
     md = render(res, label)
-    (out / "new_maps.md").write_text(md)
-    (out / "new_maps.json").write_text(json.dumps(res, indent=1, default=str) + "\n")
+    (out / f"{name}.md").write_text(md)
+    (out / f"{name}.json").write_text(json.dumps(res, indent=1, default=str) + "\n")
     print("\n" + md)
-    print(f"Wrote {out / 'new_maps.md'} and new_maps.json")
+    print(f"Wrote {out / (name + '.md')} and {name}.json")
 
 
 if __name__ == "__main__":

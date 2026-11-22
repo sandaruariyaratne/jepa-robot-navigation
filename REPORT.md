@@ -15,6 +15,10 @@ learned dynamics fail: 1 of 10 held-out pairs predicted correctly, against 9 of
 model flags all 10 of those predictions as unknown and the map has enough
 alternative shortest routes to avoid them.
 
+**Step 12.** Joint JEPA training alone does not change this on one map (§7).
+Trained on 70 layouts, though, it generalizes to unseen ones: 99.9% navigation
+success on 500 new layouts, against 36% for the v1 recipe (§8).
+
 ## 1. Setup
 
 | | |
@@ -190,10 +194,126 @@ which is what the plan's later items provide (many layouts with held-out
 layouts). The unknown threshold should be set from a quantile of trained-pair
 errors rather than a multiple of the median.
 
-## 8. Next steps
+## 8. Multi-map experiments: held-out layouts
 
-Remaining step 12 items, in the build plan's order: random goals; many layouts
-with held-out layouts; a learned goal-distance head; then moving obstacles,
-partial observability and stochastic dynamics. Two smaller follow-ups from §7:
-a quantile-based unknown threshold, and an action-consistent predictor as a
-direct test of the inductive-bias explanation.
+§7 suggested that generalization needs data that punishes memorisation. This
+tests that directly: 100 random layouts (same 6 × 5 grid, 3–7 walls, goal fixed
+at (5,0)), split **by map** 70 / 15 / 15, 1,000 random-action transitions per
+map. Each map gets its own codebook (the latents of its ~25 frames) and snaps
+only to it. Two models, same data, split, predictor size (latent 64, hidden
+256 × 256), planners and evaluation:
+
+- **v1**: autoencoder (gate checked on the validation maps; it needed the
+  robot-pixel weight × 10 fallback), then a residual predictor on frozen latents
+  (`config_multimap.yaml`).
+- **Joint JEPA**: the §7 objective, 6,000 steps of 8 maps / 512 windows each
+  (`config_multimap_jepa.yaml`).
+
+Checkpoints are chosen on validation-map 5-step snap accuracy; test maps are
+never used for training or selection.
+
+### 15 held-out test maps
+
+| | v1 | Joint JEPA |
+|---|---|---|
+| One-step, normal moves | 70% | **100%** |
+| One-step, border and wall bumps | 100% | 100% |
+| Imagined rollouts, step 5 / 10 | 31% / 21% | **90% / 70%** |
+| Imagined graph edges correct | 80% | **~100%** (1 of 1,488 wrong, flagged unknown) |
+| Maps with D(c) exact everywhere | 5/15 | **15/15** |
+| P2 navigation (Full): success / shortest path | 44% / 30% | **100% / 100%** |
+
+v1 fits the training maps perfectly (100% everywhere) and memorises them: on a
+new layout a third of its normal moves land on the wrong cell, and its unknown
+threshold (3 × a median error of 2.27) never fires, so the planner trusts all
+of them. The JEPA scores the same on validation and test maps, and slightly
+*lower* than v1 on training maps (91% vs 100% at 10 rollout steps): it is not
+memorising. With one layout (§7) it did not generalize; with 70 layouts it does.
+
+### Stress tests: 1,200 more layouts, no retraining
+
+Fresh layouts from new seeds, none equal to any of the 100 experiment layouts
+(checked; no frame of them occurs in the training data either). Navigation
+starts from every free cell of every map, two seeds.
+
+| Test set | Maps | Avg path to goal | JEPA success / shortest path | v1 success / shortest path |
+|---|---|---|---|---|
+| Like training (3–7 walls) | 500 | 5.0 | **99.9% / 99.8%** | 36% / 26% |
+| Dense walls (8–14) | 500 | 5.4 | **97.3% / 97.2%** | 13% / 12% |
+| Mazes (8–12 walls, the 200 most winding of 20,000) | 200 | 8.5 (max 18) | **94.0% / 93.9%** | 10% / 9.5% |
+| Random actions (lower bound) | | | 3–7% | |
+
+| | Like training | Dense | Mazes |
+|---|---|---|---|
+| JEPA collision accuracy (blocked vs free, all episode transitions) | 100.00% | 100.00% | 99.99% |
+| v1 collision accuracy | 81.0% | 56.6% | 65.4% |
+| JEPA rollout accuracy, step 5 | 89.5% | 80.3% | 81.0% |
+| JEPA edges wrong but trusted | 0 / 50,292 | 0 / 41,360 | 0 / 16,896 |
+| JEPA edges flagged unknown | 0.7% | 2.4% | 2.9% |
+
+The JEPA degrades gracefully: success drops with wall count (86.8% at 13–14
+walls) and with path length (mazes: ~100% at 1–3 steps, 87% at 15, 68% at 17).
+v1's collision accuracy is near chance on dense maps because it predicts
+"blocked" for many free moves.
+
+**Every JEPA failure is a doubted correct move, never a trusted wrong one.**
+The unknown rule flags ~2% of real moves; the planner treats them as walls,
+which blocks the only route in a corridor. On the mazes the learned cost alone
+(ladder D2) reaches 99.4%; the losses sit in the learned dynamics (D3, 93.3%).
+
+### Recalibrating the unknown threshold: worse
+
+Threshold set from the validation maps only, before looking at test results:
+the 99.9% quantile of correct one-step snap distances (4.25 → 7.05). On the
+validation maps this cuts correct step-1 moves rejected from 0.92% to 0.06%,
+but also trusts 67–74% of the wrong predictions at imagined steps 2–3 (up
+from 16–18%), where drift makes distance a poor signal.
+
+| JEPA, Full success / shortest path | 3 × median (default) | Calibrated |
+|---|---|---|
+| Like training | 99.9% / 99.8% | 97.8% / 97.0% |
+| Dense walls | 97.3% / 97.2% | 94.3% / 92.4% |
+| Mazes | 94.0% / 93.9% | 77.5% / 74.6% |
+
+The imagined graph became essentially perfect (D(c) exact on all 1,200 maps,
+ladder D2 = 100%), but P2's 3-step look-ahead now trusts drifted wrong
+states and loops (maze loop failures 482 → 1,814). One threshold is doing two
+jobs: one-step edges want it high, unsnapped multi-step rollouts want it low.
+The default stays 3 × median; the calibrated value is only used with
+`--threshold calibrated`. The standard fix is not a second threshold but to
+snap every imagined step and continue from the codebook entry (planning on the
+learned graph), so only the one-step check is needed.
+
+### What these results do not show
+
+- **That JEPA specifically is needed.** The baseline is a frozen reconstruction
+  encoder. An encoder trained end to end with the predictor under a
+  reconstruction loss has not been tried; neither have ablations of the EMA
+  target or the variance / covariance terms.
+- **Robustness across seeds.** One training seed per model.
+- **Other conditions.** Same grid size, fixed goal, deterministic dynamics,
+  noise-free frames; every test layout comes from the same kind of generator.
+- **A good long-horizon model.** Rollouts drift (69% correct at 10 steps on new
+  maps); navigation works because the planner looks 3 steps ahead and snaps
+  to a per-map codebook.
+- **Planning without privileged frames.** Each new map's codebook is built
+  from one frame of the robot on every free cell (v1 gets the same). A real
+  agent would have to explore to collect them.
+
+Full tables: [results_multimap/](results_multimap/) and
+[results_multimap_jepa/](results_multimap_jepa/) (`results.md`, `new_maps.md`,
+`hard_maps.md`, `maze_maps.md`, `*_calibrated.md`).
+
+## 9. Next steps
+
+1. **Plan on the learned graph**: snap each imagined step to the codebook and
+   continue from that entry, with the one-step threshold calibrated on the
+   validation maps; confirm on fresh validation mazes before re-running the
+   test sets once.
+2. **A fair baseline**: encoder and predictor trained end to end with a
+   reconstruction loss instead of the JEPA loss.
+3. **3–5 seeds** for both, and ablations of the EMA target and the variance /
+   covariance terms.
+4. Remaining step 12 items: random goals, a learned goal-distance head, moving
+   obstacles, partial observability, stochastic dynamics; and building each new
+   map's codebook by exploration.

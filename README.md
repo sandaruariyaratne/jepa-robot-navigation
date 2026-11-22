@@ -60,6 +60,22 @@ covariance penalties). Its checkpoints use the v1 formats, so the graph,
 planners, evaluation and dashboard (`--config config_v2.yaml`) work unchanged.
 Findings: [REPORT.md §7](REPORT.md#7-v2-experiment-1-joint-jepa-training).
 
+### Multi-map: held-out layouts (step 12)
+
+```
+.venv/bin/python main.py multimap --config config_multimap.yaml              # 100 maps, v1 -> results_multimap/
+.venv/bin/python main.py multimap-jepa --config config_multimap_jepa.yaml    # same maps, joint JEPA (~11 min)
+.venv/bin/python -m multimap.new_maps --config config_multimap_jepa.yaml                  # 500 new layouts
+.venv/bin/python -m multimap.new_maps --set hard_maps --config config_multimap_jepa.yaml  # 500, 8-14 walls
+.venv/bin/python -m multimap.new_maps --set maze_maps --config config_multimap_jepa.yaml  # 200 mazes
+.venv/bin/python -m multimap.calibrate --config config_multimap_jepa.yaml    # unknown threshold from validation maps
+```
+
+100 random layouts split 70 / 15 / 15 by map; each map snaps to its own
+codebook. The stress tests load the trained models and never retrain; add
+`--threshold calibrated` to use the validation-calibrated unknown threshold.
+Findings: [REPORT.md §8](REPORT.md#8-multi-map-experiments-held-out-layouts).
+
 ## Look at it
 
 ```
@@ -84,11 +100,12 @@ data/           collection, episode split + held-out pairs, datasets (single ste
 models/         numerical baseline, encoder, decoder, residual predictor
 training/       train_numerical, train_encoder (with gate), train_world_model, train_jepa (v2)
 evaluation/     linear probe, metrics, prediction accuracy, navigation, ladder, plots, `python -m evaluation`
+multimap/       many-layout experiment: maps, collection, v1 and JEPA training, evaluation, stress tests, calibration
 planning/       imagination (no simulator calls), latent graph + D(c), true-model wrapper, P0/P1/P2, MPC loop
 visualization/  replay dashboard
 tests/          pytest suite (one file per step)
 main.py         pipeline entry point
-config.yaml     every setting and the seed (config_v2.yaml extends it for v2)
+config.yaml     every setting and the seed (config_v2.yaml, config_multimap*.yaml extend it)
 ```
 
 ## Tests

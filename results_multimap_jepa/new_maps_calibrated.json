@@ -1,0 +1,796 @@
+{
+ "label": "joint JEPA (v2)",
+ "set": "new_maps",
+ "unknown_threshold": {
+  "kind": "calibrated",
+  "threshold": 7.046285629272461,
+  "rule": "99.9% quantile of correct one-step snap distances, validation maps"
+ },
+ "title": "new maps",
+ "n_maps": 500,
+ "seed": 1,
+ "nav_seeds": [
+  0,
+  1
+ ],
+ "mean_distance": 5.046315976487281,
+ "longest_path": 14,
+ "walls_min": 3,
+ "walls_max": 7,
+ "starts": 12073,
+ "frames_rendered": 3,
+ "prediction": {
+  "one_step": {
+   "normal moves": {
+    "correct": 338970,
+    "total": 338970
+   },
+   "border bumps": {
+    "correct": 92534,
+    "total": 92534
+   },
+   "wall bumps": {
+    "correct": 68496,
+    "total": 68496
+   },
+   "all": {
+    "correct": 500000,
+    "total": 500000
+   }
+  },
+  "mse_model": 0.0485949569940567,
+  "mse_persistence": 1.1891428899765015,
+  "rollout": [
+   1.0,
+   0.9924756169319153,
+   0.9669609689712524,
+   0.9334048819541931,
+   0.8949268221855163,
+   0.8531243991851807,
+   0.8110243916511536,
+   0.7689268279075623,
+   0.7280634188652039,
+   0.6881853652000427
+  ],
+  "rollout_windows": 410000
+ },
+ "collision": {
+  "accuracy": 1.0,
+  "transitions": 500000,
+  "blocked_predicted_blocked": {
+   "correct": 161030,
+   "total": 161030
+  },
+  "wall_bumps_predicted_blocked": {
+   "correct": 68496,
+   "total": 68496
+  },
+  "border_bumps_predicted_blocked": {
+   "correct": 92534,
+   "total": 92534
+  },
+  "free_moves_predicted_blocked": {
+   "wrong": 0,
+   "total": 338970
+  },
+  "precision": 1.0
+ },
+ "graph": {
+  "edges": {
+   "normal moves": {
+    "total": 34236,
+    "correct": 34236,
+    "unknown": 0,
+    "wrong_known": 0
+   },
+   "border bumps": {
+    "total": 9312,
+    "correct": 9312,
+    "unknown": 0,
+    "wrong_known": 0
+   },
+   "wall bumps": {
+    "total": 6744,
+    "correct": 6744,
+    "unknown": 3,
+    "wrong_known": 0
+   },
+   "all": {
+    "total": 50292,
+    "correct": 50292,
+    "unknown": 3,
+    "wrong_known": 0
+   }
+  },
+  "d_exact": 12573,
+  "d_cells": 12573,
+  "d_under": 0,
+  "maps_exact": 500
+ },
+ "navigation": {
+  "Oracle": {
+   "episodes": 24146,
+   "success": 24146,
+   "optimal": 24146,
+   "mean_path_ratio": 1.0,
+   "collision_rate": 0.0,
+   "loop_failures": 0,
+   "timeouts": 0,
+   "mean_plan_ms": 0.03522038136917788,
+   "by_distance": {
+    "1": {
+     "success": 1678,
+     "optimal": 1678,
+     "total": 1678
+    },
+    "2": {
+     "success": 2252,
+     "optimal": 2252,
+     "total": 2252
+    },
+    "3": {
+     "success": 2758,
+     "optimal": 2758,
+     "total": 2758
+    },
+    "4": {
+     "success": 3426,
+     "optimal": 3426,
+     "total": 3426
+    },
+    "5": {
+     "success": 3724,
+     "optimal": 3724,
+     "total": 3724
+    },
+    "6": {
+     "success": 3574,
+     "optimal": 3574,
+     "total": 3574
+    },
+    "7": {
+     "success": 3010,
+     "optimal": 3010,
+     "total": 3010
+    },
+    "8": {
+     "success": 2094,
+     "optimal": 2094,
+     "total": 2094
+    },
+    "9": {
+     "success": 1168,
+     "optimal": 1168,
+     "total": 1168
+    },
+    "10": {
+     "success": 242,
+     "optimal": 242,
+     "total": 242
+    },
+    "11": {
+     "success": 118,
+     "optimal": 118,
+     "total": 118
+    },
+    "12": {
+     "success": 54,
+     "optimal": 54,
+     "total": 54
+    },
+    "13": {
+     "success": 34,
+     "optimal": 34,
+     "total": 34
+    },
+    "14": {
+     "success": 14,
+     "optimal": 14,
+     "total": 14
+    }
+   }
+  },
+  "D1": {
+   "episodes": 24146,
+   "success": 24146,
+   "optimal": 24146,
+   "mean_path_ratio": 1.0,
+   "collision_rate": 0.0,
+   "loop_failures": 0,
+   "timeouts": 0,
+   "mean_plan_ms": 0.25476769056119514,
+   "by_distance": {
+    "1": {
+     "success": 1678,
+     "optimal": 1678,
+     "total": 1678
+    },
+    "2": {
+     "success": 2252,
+     "optimal": 2252,
+     "total": 2252
+    },
+    "3": {
+     "success": 2758,
+     "optimal": 2758,
+     "total": 2758
+    },
+    "4": {
+     "success": 3426,
+     "optimal": 3426,
+     "total": 3426
+    },
+    "5": {
+     "success": 3724,
+     "optimal": 3724,
+     "total": 3724
+    },
+    "6": {
+     "success": 3574,
+     "optimal": 3574,
+     "total": 3574
+    },
+    "7": {
+     "success": 3010,
+     "optimal": 3010,
+     "total": 3010
+    },
+    "8": {
+     "success": 2094,
+     "optimal": 2094,
+     "total": 2094
+    },
+    "9": {
+     "success": 1168,
+     "optimal": 1168,
+     "total": 1168
+    },
+    "10": {
+     "success": 242,
+     "optimal": 242,
+     "total": 242
+    },
+    "11": {
+     "success": 118,
+     "optimal": 118,
+     "total": 118
+    },
+    "12": {
+     "success": 54,
+     "optimal": 54,
+     "total": 54
+    },
+    "13": {
+     "success": 34,
+     "optimal": 34,
+     "total": 34
+    },
+    "14": {
+     "success": 14,
+     "optimal": 14,
+     "total": 14
+    }
+   }
+  },
+  "D2": {
+   "episodes": 24146,
+   "success": 24146,
+   "optimal": 24146,
+   "mean_path_ratio": 1.0,
+   "collision_rate": 0.0,
+   "loop_failures": 0,
+   "timeouts": 0,
+   "mean_plan_ms": 0.2513982165479344,
+   "by_distance": {
+    "1": {
+     "success": 1678,
+     "optimal": 1678,
+     "total": 1678
+    },
+    "2": {
+     "success": 2252,
+     "optimal": 2252,
+     "total": 2252
+    },
+    "3": {
+     "success": 2758,
+     "optimal": 2758,
+     "total": 2758
+    },
+    "4": {
+     "success": 3426,
+     "optimal": 3426,
+     "total": 3426
+    },
+    "5": {
+     "success": 3724,
+     "optimal": 3724,
+     "total": 3724
+    },
+    "6": {
+     "success": 3574,
+     "optimal": 3574,
+     "total": 3574
+    },
+    "7": {
+     "success": 3010,
+     "optimal": 3010,
+     "total": 3010
+    },
+    "8": {
+     "success": 2094,
+     "optimal": 2094,
+     "total": 2094
+    },
+    "9": {
+     "success": 1168,
+     "optimal": 1168,
+     "total": 1168
+    },
+    "10": {
+     "success": 242,
+     "optimal": 242,
+     "total": 242
+    },
+    "11": {
+     "success": 118,
+     "optimal": 118,
+     "total": 118
+    },
+    "12": {
+     "success": 54,
+     "optimal": 54,
+     "total": 54
+    },
+    "13": {
+     "success": 34,
+     "optimal": 34,
+     "total": 34
+    },
+    "14": {
+     "success": 14,
+     "optimal": 14,
+     "total": 14
+    }
+   }
+  },
+  "D3": {
+   "episodes": 24146,
+   "success": 23603,
+   "optimal": 23433,
+   "mean_path_ratio": 1.0011925089743585,
+   "collision_rate": 0.008239258635214828,
+   "loop_failures": 543,
+   "timeouts": 0,
+   "mean_plan_ms": 0.58980749789385,
+   "by_distance": {
+    "1": {
+     "success": 1678,
+     "optimal": 1678,
+     "total": 1678
+    },
+    "2": {
+     "success": 2252,
+     "optimal": 2252,
+     "total": 2252
+    },
+    "3": {
+     "success": 2758,
+     "optimal": 2758,
+     "total": 2758
+    },
+    "4": {
+     "success": 3426,
+     "optimal": 3420,
+     "total": 3426
+    },
+    "5": {
+     "success": 3718,
+     "optimal": 3711,
+     "total": 3724
+    },
+    "6": {
+     "success": 3532,
+     "optimal": 3518,
+     "total": 3574
+    },
+    "7": {
+     "success": 2950,
+     "optimal": 2922,
+     "total": 3010
+    },
+    "8": {
+     "success": 1986,
+     "optimal": 1934,
+     "total": 2094
+    },
+    "9": {
+     "success": 1071,
+     "optimal": 1036,
+     "total": 1168
+    },
+    "10": {
+     "success": 138,
+     "optimal": 122,
+     "total": 242
+    },
+    "11": {
+     "success": 65,
+     "optimal": 57,
+     "total": 118
+    },
+    "12": {
+     "success": 19,
+     "optimal": 15,
+     "total": 54
+    },
+    "13": {
+     "success": 10,
+     "optimal": 10,
+     "total": 34
+    },
+    "14": {
+     "success": 0,
+     "optimal": 0,
+     "total": 14
+    }
+   }
+  },
+  "Full": {
+   "episodes": 24146,
+   "success": 23603,
+   "optimal": 23433,
+   "mean_path_ratio": 1.0011925089743585,
+   "collision_rate": 0.008239258635214828,
+   "loop_failures": 543,
+   "timeouts": 0,
+   "mean_plan_ms": 0.5851944397641112,
+   "by_distance": {
+    "1": {
+     "success": 1678,
+     "optimal": 1678,
+     "total": 1678
+    },
+    "2": {
+     "success": 2252,
+     "optimal": 2252,
+     "total": 2252
+    },
+    "3": {
+     "success": 2758,
+     "optimal": 2758,
+     "total": 2758
+    },
+    "4": {
+     "success": 3426,
+     "optimal": 3420,
+     "total": 3426
+    },
+    "5": {
+     "success": 3718,
+     "optimal": 3711,
+     "total": 3724
+    },
+    "6": {
+     "success": 3532,
+     "optimal": 3518,
+     "total": 3574
+    },
+    "7": {
+     "success": 2950,
+     "optimal": 2922,
+     "total": 3010
+    },
+    "8": {
+     "success": 1986,
+     "optimal": 1934,
+     "total": 2094
+    },
+    "9": {
+     "success": 1071,
+     "optimal": 1036,
+     "total": 1168
+    },
+    "10": {
+     "success": 138,
+     "optimal": 122,
+     "total": 242
+    },
+    "11": {
+     "success": 65,
+     "optimal": 57,
+     "total": 118
+    },
+    "12": {
+     "success": 19,
+     "optimal": 15,
+     "total": 54
+    },
+    "13": {
+     "success": 10,
+     "optimal": 10,
+     "total": 34
+    },
+    "14": {
+     "success": 0,
+     "optimal": 0,
+     "total": 14
+    }
+   }
+  },
+  "Random": {
+   "episodes": 24146,
+   "success": 1621,
+   "optimal": 777,
+   "mean_path_ratio": 1.7044784230780528,
+   "collision_rate": 0.30268660045082,
+   "loop_failures": 22525,
+   "timeouts": 0,
+   "mean_plan_ms": 5.4321420321946015e-05,
+   "by_distance": {
+    "1": {
+     "success": 854,
+     "optimal": 366,
+     "total": 1678
+    },
+    "2": {
+     "success": 403,
+     "optimal": 140,
+     "total": 2252
+    },
+    "3": {
+     "success": 248,
+     "optimal": 226,
+     "total": 2758
+    },
+    "4": {
+     "success": 64,
+     "optimal": 45,
+     "total": 3426
+    },
+    "5": {
+     "success": 28,
+     "optimal": 0,
+     "total": 3724
+    },
+    "6": {
+     "success": 6,
+     "optimal": 0,
+     "total": 3574
+    },
+    "7": {
+     "success": 18,
+     "optimal": 0,
+     "total": 3010
+    },
+    "8": {
+     "success": 0,
+     "optimal": 0,
+     "total": 2094
+    },
+    "9": {
+     "success": 0,
+     "optimal": 0,
+     "total": 1168
+    },
+    "10": {
+     "success": 0,
+     "optimal": 0,
+     "total": 242
+    },
+    "11": {
+     "success": 0,
+     "optimal": 0,
+     "total": 118
+    },
+    "12": {
+     "success": 0,
+     "optimal": 0,
+     "total": 54
+    },
+    "13": {
+     "success": 0,
+     "optimal": 0,
+     "total": 34
+    },
+    "14": {
+     "success": 0,
+     "optimal": 0,
+     "total": 14
+    }
+   }
+  }
+ },
+ "full_by_walls": {
+  "5": {
+   "maps": 115,
+   "episodes": 5520,
+   "success": 5406,
+   "optimal": 5388
+  },
+  "7": {
+   "maps": 74,
+   "episodes": 3256,
+   "success": 3096,
+   "optimal": 3044
+  },
+  "6": {
+   "maps": 99,
+   "episodes": 4554,
+   "success": 4387,
+   "optimal": 4320
+  },
+  "4": {
+   "maps": 104,
+   "episodes": 5200,
+   "success": 5135,
+   "optimal": 5106
+  },
+  "3": {
+   "maps": 108,
+   "episodes": 5616,
+   "success": 5579,
+   "optimal": 5575
+  }
+ },
+ "maps_all_optimal": 370,
+ "worst_maps": [
+  {
+   "map": 471,
+   "walls": 7,
+   "optimal": 12,
+   "success": 12,
+   "episodes": 44,
+   "wrong_edges": 0,
+   "d_exact": 23,
+   "d_cells": 23
+  },
+  {
+   "map": 53,
+   "walls": 6,
+   "optimal": 20,
+   "success": 32,
+   "episodes": 46,
+   "wrong_edges": 0,
+   "d_exact": 24,
+   "d_cells": 24
+  },
+  {
+   "map": 414,
+   "walls": 7,
+   "optimal": 28,
+   "success": 28,
+   "episodes": 44,
+   "wrong_edges": 0,
+   "d_exact": 23,
+   "d_cells": 23
+  },
+  {
+   "map": 393,
+   "walls": 6,
+   "optimal": 30,
+   "success": 34,
+   "episodes": 46,
+   "wrong_edges": 0,
+   "d_exact": 24,
+   "d_cells": 24
+  },
+  {
+   "map": 238,
+   "walls": 6,
+   "optimal": 31,
+   "success": 40,
+   "episodes": 46,
+   "wrong_edges": 0,
+   "d_exact": 24,
+   "d_cells": 24
+  },
+  {
+   "map": 106,
+   "walls": 6,
+   "optimal": 32,
+   "success": 40,
+   "episodes": 46,
+   "wrong_edges": 0,
+   "d_exact": 24,
+   "d_cells": 24
+  },
+  {
+   "map": 1,
+   "walls": 7,
+   "optimal": 31,
+   "success": 31,
+   "episodes": 44,
+   "wrong_edges": 0,
+   "d_exact": 23,
+   "d_cells": 23
+  },
+  {
+   "map": 137,
+   "walls": 7,
+   "optimal": 32,
+   "success": 32,
+   "episodes": 44,
+   "wrong_edges": 0,
+   "d_exact": 23,
+   "d_cells": 23
+  },
+  {
+   "map": 261,
+   "walls": 7,
+   "optimal": 32,
+   "success": 32,
+   "episodes": 44,
+   "wrong_edges": 0,
+   "d_exact": 23,
+   "d_cells": 23
+  },
+  {
+   "map": 117,
+   "walls": 5,
+   "optimal": 35,
+   "success": 36,
+   "episodes": 48,
+   "wrong_edges": 0,
+   "d_exact": 25,
+   "d_cells": 25
+  },
+  {
+   "map": 430,
+   "walls": 6,
+   "optimal": 34,
+   "success": 43,
+   "episodes": 46,
+   "wrong_edges": 0,
+   "d_exact": 24,
+   "d_cells": 24
+  },
+  {
+   "map": 36,
+   "walls": 6,
+   "optimal": 35,
+   "success": 37,
+   "episodes": 46,
+   "wrong_edges": 0,
+   "d_exact": 24,
+   "d_cells": 24
+  },
+  {
+   "map": 162,
+   "walls": 6,
+   "optimal": 35,
+   "success": 35,
+   "episodes": 46,
+   "wrong_edges": 0,
+   "d_exact": 24,
+   "d_cells": 24
+  },
+  {
+   "map": 419,
+   "walls": 6,
+   "optimal": 35,
+   "success": 35,
+   "episodes": 46,
+   "wrong_edges": 0,
+   "d_exact": 24,
+   "d_cells": 24
+  },
+  {
+   "map": 378,
+   "walls": 5,
+   "optimal": 37,
+   "success": 37,
+   "episodes": 48,
+   "wrong_edges": 0,
+   "d_exact": 25,
+   "d_cells": 25
+  }
+ ],
+ "diagnosis": [
+  "D1 = 100% optimal: the planner and control loop are correct.",
+  "D2 matches D1: the learned cost D(c) costs nothing.",
+  "D3 vs D1: the learned dynamics costs 2% success and 3% optimal episodes.",
+  "Full (97% optimal) is no worse than the weaker of D2 / D3: no compounding.",
+  "Random reaches the goal in 7% of episodes (lower bound); Oracle in 100%."
+ ]
+}

@@ -45,6 +45,10 @@ multimap:
     seeds: [0, 1]                      # planning tie-break seeds; every start cell of every map
     results_dir: results_multimap
 
+  calibration:                         # python -m multimap.calibrate: unknown threshold from validation maps
+    quantile: 0.999                    # of correct one-step snap distances (used with --threshold calibrated)
+    horizon: 3                         # also report steps 2..3, which P2 snaps with the same threshold
+
   new_maps:                            # stress test: 500 more layouts, never trained, validated or tested on
     n_maps: 500                        #   python -m multimap.new_maps --config config_multimap_jepa.yaml
     seed: 1                            # layouts / episodes; all 100 experiment layouts are excluded
@@ -53,3 +57,29 @@ multimap:
     maps_path: data_newmaps/maps.json
     data_path: data_newmaps/transitions.npz
     nav_seeds: [0, 1]                  # navigation from every free start cell of every map, per seed
+
+  hard_maps:                           # harder: 8-14 walls (training had 3-7), random placement
+    title: dense-wall maps (8-14 walls)  #   python -m multimap.new_maps --set hard_maps --config ...
+    n_maps: 500
+    min_walls: 8
+    max_walls: 14
+    seed: 2
+    episodes_per_map: 20
+    steps_per_episode: 50
+    maps_path: data_hardmaps/maps.json
+    data_path: data_hardmaps/transitions.npz
+    nav_seeds: [0, 1]
+
+  maze_maps:                           # hardest: 8-14 walls, the 200 most winding of 20,000 layouts
+    title: maze maps (8-14 walls, longest paths)  #   python -m multimap.new_maps --set maze_maps --config ...
+    n_maps: 200
+    select: longest_paths
+    pool: 20000
+    min_walls: 8
+    max_walls: 14
+    seed: 3
+    episodes_per_map: 20
+    steps_per_episode: 50
+    maps_path: data_mazemaps/maps.json
+    data_path: data_mazemaps/transitions.npz
+    nav_seeds: [0, 1]
