@@ -1,0 +1,34 @@
+# v2 experiment 1 (build plan step 12): joint JEPA training.
+# Same data, splits, planners and evaluation as v1; only the encoder + predictor change.
+#   python main.py train-jepa --config config_v2.yaml
+#   python main.py eval --config config_v2.yaml
+extends: config.yaml
+
+jepa:
+  latent_dim: 32
+  hidden: [128, 128]               # predictor, as in v1
+  last_layer_init: 0.001
+  lr: 0.001
+  batch_size: 64
+  epochs: 50
+  curriculum: [[1, 1], [11, 2], [21, 4]]
+  select_horizon: 5
+  ema_tau: 0.99                    # target encoder = EMA of the online encoder, no gradient
+  pred_weight: 1.0                 # || P(E(x_t), a) - E_target(x_t+1) ||^2
+  var_weight: 1.0                  # hinge keeping each latent dimension's std >= 1 (anti-collapse)
+  cov_weight: 0.04                 # off-diagonal covariance (decorrelates dimensions), VICReg 25:25:1 ratio
+  metrics: checkpoints_v2/jepa_metrics.json
+
+# v2 checkpoints in the v1 formats, so imagination / planning / evaluation run unchanged.
+encoder:
+  checkpoint: checkpoints_v2/encoder.pt              # the EMA target encoder, frozen, + codebook
+  decoder_checkpoint: checkpoints_v2/decoder.pt      # none: JEPA has no decoder (dashboard shows no decodes)
+predictor:
+  checkpoint: checkpoints_v2/predictor.pt
+  metrics: checkpoints_v2/predictor_metrics.json
+imagination:
+  metrics: checkpoints_v2/graph_metrics.json
+planning:
+  metrics: checkpoints_v2/planning_metrics.json
+evaluation:
+  results_dir: results_v2

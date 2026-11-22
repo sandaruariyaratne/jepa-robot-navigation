@@ -1,0 +1,55 @@
+# Multi-map experiment (build plan step 12: many layouts with held-out layouts), v1 model.
+# 100 random layouts, goal fixed at (5,0), split 70 / 15 / 15 by map; test maps are never trained on.
+#   python main.py multimap --config config_multimap.yaml        (collect -> train -> evaluate)
+extends: config.yaml
+
+multimap:
+  n_maps: 100
+  min_walls: 3
+  max_walls: 7
+  split_fractions: [0.7, 0.15, 0.15]   # train / val / test, by map
+  episodes_per_map: 20
+  steps_per_episode: 50                # -> 1,000 transitions per map, 100,000 in all
+  maps_path: data_multimap/maps.json
+  data_path: data_multimap/transitions.npz
+
+  encoder:                             # v1 autoencoder recipe, gate checked on unseen (validation) maps
+    latent_dim: 64                     # v1 used 32; the latent now has to hold the wall layout as well
+    lr: 0.001
+    batch_size: 64
+    epochs: 300                        # over the ~1,750 distinct training-map frames (~8,400 updates, like v1)
+    gate_epoch: 180
+    eval_every: 10
+    robot_weight: 1.0
+    fallback_robot_weight: 10.0
+    gate_probe_accuracy: 0.99          # linear probe: robot cell from validation-map latents
+    gate_robot_decode: 0.99            # decoded validation-map frames showing the robot in the right cell
+    checkpoint: checkpoints_multimap/encoder.pt
+    decoder_checkpoint: checkpoints_multimap/decoder.pt
+    metrics: checkpoints_multimap/encoder_metrics.json
+    decodes_png: checkpoints_multimap/encoder_decodes.png
+
+  predictor:                           # v1 residual predictor recipe
+    hidden: [256, 256]                 # v1 used 128; it now has to read blocked moves off the image
+    last_layer_init: 0.001
+    lr: 0.001
+    batch_size: 64
+    epochs: 30
+    curriculum: [[1, 1], [11, 2], [21, 4]]
+    select_horizon: 5                  # checkpoint = best 5-step snap accuracy on validation maps
+    eval_horizon: 10
+    checkpoint: checkpoints_multimap/predictor.pt
+    metrics: checkpoints_multimap/predictor_metrics.json
+
+  evaluation:
+    seeds: [0, 1]                      # planning tie-break seeds; every start cell of every map
+    results_dir: results_multimap
+
+  new_maps:                            # stress test: 500 more layouts, never trained, validated or tested on
+    n_maps: 500                        #   python -m multimap.new_maps --config config_multimap_jepa.yaml
+    seed: 1                            # layouts / episodes; all 100 experiment layouts are excluded
+    episodes_per_map: 20               # random-action episodes, for rollout and one-step / collision accuracy
+    steps_per_episode: 50
+    maps_path: data_newmaps/maps.json
+    data_path: data_newmaps/transitions.npz
+    nav_seeds: [0, 1]                  # navigation from every free start cell of every map, per seed

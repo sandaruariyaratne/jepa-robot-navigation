@@ -1,0 +1,31 @@
+# Multi-map experiment with the joint JEPA (v2) instead of the v1 autoencoder + predictor.
+# Same 100 maps, 70 / 15 / 15 split, data and evaluation as config_multimap.yaml.
+#   python main.py multimap-jepa --config config_multimap_jepa.yaml        (train -> evaluate; reuses the data)
+extends: config_multimap.yaml
+
+multimap:
+  label: joint JEPA (v2)
+
+  jepa:
+    latent_dim: 64                     # as the multi-map v1 run
+    hidden: [256, 256]                 # predictor, as the multi-map v1 run
+    last_layer_init: 0.001
+    lr: 0.001
+    steps: 6000                        # ~13 min on a laptop CPU
+    maps_per_step: 8                   # encode these maps' ~25 frames each, online + target
+    windows_per_step: 512              # training windows per step, from those maps
+    curriculum: [[1, 1], [2001, 2], [4001, 4]]   # by step
+    eval_every: 100
+    select_horizon: 5                  # checkpoint = best 5-step snap accuracy on validation maps
+    ema_tau: 0.99
+    pred_weight: 1.0
+    var_weight: 1.0
+    cov_weight: 0.04
+    metrics: checkpoints_multimap_jepa/jepa_metrics.json
+
+  encoder:
+    checkpoint: checkpoints_multimap_jepa/encoder.pt   # EMA target encoder, frozen (no decoder)
+  predictor:
+    checkpoint: checkpoints_multimap_jepa/predictor.pt
+  evaluation:
+    results_dir: results_multimap_jepa

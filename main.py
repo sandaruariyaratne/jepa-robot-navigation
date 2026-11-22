@@ -9,6 +9,10 @@
                                                       results/results.md + plots
     python main.py fingerprint         hashes of every deterministic output, to compare two runs
 
+v2 (step 12, joint JEPA):  python main.py train-jepa --config config_v2.yaml  then  python main.py eval --config config_v2.yaml
+Multi-map (step 12, held-out layouts):  python main.py multimap --config config_multimap.yaml
+    then the joint JEPA on the same maps:  python main.py multimap-jepa --config config_multimap_jepa.yaml
+
 Every stage reads config.yaml (or --config) and its fixed seed. Each stage
 runs as its own process and the pipeline stops at the first failure (e.g. the
 encoder gate).
@@ -31,6 +35,18 @@ STAGES: dict[str, list[tuple[str, str]]] = {
     "train-numerical": [("training.train_numerical", "numerical (x, y, a) -> next (x, y) baseline")],
     "train-encoder": [("training.train_encoder", "autoencoder, gate, frozen encoder + codebook")],
     "train-world": [("training.train_world_model", "residual latent predictor")],
+    # v2 (step 12), not part of `all`: python main.py train-jepa --config config_v2.yaml, then eval with it
+    "train-jepa": [("training.train_jepa", "joint JEPA: online + EMA target encoder and predictor")],
+    # multi-map (step 12), not part of `all`: python main.py multimap --config config_multimap.yaml
+    "multimap": [
+        ("multimap.collect", "100 maps, split 70/15/15, random-action data"),
+        ("multimap.train", "v1 autoencoder + predictor on the training maps"),
+        ("multimap.evaluate", "prediction, graphs, navigation and ladder on train / val / test maps"),
+    ],
+    "multimap-jepa": [
+        ("multimap.train_jepa", "joint JEPA on the training maps (reuses the multimap data)"),
+        ("multimap.evaluate", "prediction, graphs, navigation and ladder on train / val / test maps"),
+    ],
     "eval": [
         ("evaluation.probes", "probe sanity checks"),
         ("planning.latent_graph", "imagined graph and D(c)"),
@@ -115,7 +131,7 @@ def fingerprint(config: Path | None) -> dict[str, str]:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("command", choices=[*ORDER, "all", "fingerprint"])
+    parser.add_argument("command", choices=[*ORDER, "train-jepa", "multimap", "multimap-jepa", "all", "fingerprint"])
     parser.add_argument("--config", type=Path, default=None, help="config file (default: config.yaml)")
     args = parser.parse_args()
     config = args.config.resolve() if args.config else None

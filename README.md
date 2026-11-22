@@ -46,6 +46,20 @@ another) and its fixed seed; re-running gives the same data, checkpoints and
 results. Each stage can also be run on its own, e.g.
 `python -m training.train_encoder`.
 
+### v2: joint JEPA (step 12, experiment 1)
+
+```
+.venv/bin/python main.py train-jepa --config config_v2.yaml    # ~1 min -> checkpoints_v2/
+.venv/bin/python main.py eval --config config_v2.yaml          # -> results_v2/
+.venv/bin/python -m training.train_jepa --config config_v2.yaml --ablate-latent-dim 2,4,8,16,32
+```
+
+[config_v2.yaml](config_v2.yaml) extends config.yaml and only swaps the encoder
+and predictor for jointly trained ones (EMA target encoder, variance /
+covariance penalties). Its checkpoints use the v1 formats, so the graph,
+planners, evaluation and dashboard (`--config config_v2.yaml`) work unchanged.
+Findings: [REPORT.md §7](REPORT.md#7-v2-experiment-1-joint-jepa-training).
+
 ## Look at it
 
 ```
@@ -68,13 +82,13 @@ steps-to-goal), `checkpoints/encoder_decodes.png`, and three plots in
 environment/    grid world, renderer, BFS oracle, pygame viewer
 data/           collection, episode split + held-out pairs, datasets (single steps or K-step windows)
 models/         numerical baseline, encoder, decoder, residual predictor
-training/       train_numerical, train_encoder (with gate), train_world_model
+training/       train_numerical, train_encoder (with gate), train_world_model, train_jepa (v2)
 evaluation/     linear probe, metrics, prediction accuracy, navigation, ladder, plots, `python -m evaluation`
 planning/       imagination (no simulator calls), latent graph + D(c), true-model wrapper, P0/P1/P2, MPC loop
 visualization/  replay dashboard
 tests/          pytest suite (one file per step)
 main.py         pipeline entry point
-config.yaml     every setting and the seed
+config.yaml     every setting and the seed (config_v2.yaml extends it for v2)
 ```
 
 ## Tests

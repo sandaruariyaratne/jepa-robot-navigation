@@ -130,10 +130,70 @@ A clean copy (no data, checkpoints or results) re-run with `main.py all`
 outputs: data, splits, the four checkpoints' tensors, every metrics file and
 the results table. Wall-clock planning times are the only fields excluded.
 
-## 7. Next steps
+## 7. v2 experiment 1: joint JEPA training
 
-In the order the build plan gives: joint JEPA training (EMA target encoder,
-τ = 0.99, variance / covariance penalties), which is the direct attack on the
-held-out failure because it lets prediction shape the latent space; then
-random goals; many layouts with held-out layouts; a learned goal-distance head;
-then moving obstacles, partial observability and stochastic dynamics.
+The first step 12 experiment tests the obvious fix for §3: train the encoder
+*for prediction* instead of reconstruction. The online encoder and predictor
+train together against an EMA target encoder (τ = 0.99, no gradient), with
+VICReg-style variance and covariance penalties (weights 1 : 1 : 0.04) to
+prevent collapse; no decoder. Data, held-out pairs, rollout curriculum,
+checkpoint selection, planners and evaluation are unchanged
+(`config_v2.yaml`; full tables in [results_v2/results.md](results_v2/results.md)).
+
+| | v1 frozen autoencoder | v2 joint JEPA |
+|---|---|---|
+| Trained pairs (fit) | 90/90 | 90/90 |
+| Held-out moves | 0/7 | 0/7 |
+| Held-out bumps | 1/3 | 2/3 |
+| Held-out test transitions | 15/103 | 29/103 |
+| Imagined rollouts, all test windows, step 1 → 10 | 91% → 49% | 92% → 50% |
+| (x, y) from the top 3 latent principal components, R² | 0.20 | 0.24 |
+| Effective rank of the 25 latents | 22.9 | 18.0 |
+| Median one-step error (sets the "unknown" threshold) | 0.003 | 0.052 |
+| Imagined graph edges correct | 93/100 | 88/100 |
+| P2 navigation, 120 episodes | 120 optimal | 120 optimal |
+| Ladder D3 (learned dynamics, true cost) | 120 optimal | 115 optimal, 5 loop failures |
+
+**Joint training, as specified, does not fix generalization.** Fit is the
+same, held-out moves stay at 0/7, and the latents are no more grid-shaped than
+v1's. Nothing in the objective rewards a latent space where "UP" is the same
+change everywhere; with 25 states and 90 training transitions, memorising each
+transition still satisfies the loss.
+
+**Latent size is not the fix either** (one seed each, so small differences
+are noise):
+
+| Latent size | Trained pairs | Held-out moves | Held-out bumps | (x, y) R² |
+|---|---|---|---|---|
+| 2 | 81/90 | 3/7 | 1/3 | 0.10 |
+| 4 | 90/90 | 2/7 | 2/3 | 0.29 |
+| 8 | 90/90 | 1/7 | 2/3 | 0.19 |
+| 16 | 90/90 | 0/7 | 2/3 | 0.52 |
+| 32 | 90/90 | 0/7 | 2/3 | 0.24 |
+
+Smaller latents help a little (2–3 of 7 held-out moves), but 2 dimensions
+already underfits the training pairs, and none approaches the numerical
+baseline's 7/7.
+
+**A side effect the ladder caught.** v2's one-step errors are less uniform, so
+"unknown = farther than 3 × the median error" now also rejects 5 *correct*
+trained moves. That leaves the reference start (0,4) with no trusted move
+toward the goal in the imagined graph. Full P2 still succeeds from there by
+falling back to latent distance for one step; D3, which has a trusted cost and
+so never falls back, bumps twice and stops (all 5 of its loop failures). The
+fault is the threshold's calibration, not the predicted dynamics.
+
+**What this suggests.** Generalization here needs either an inductive bias
+toward action-consistent latents (e.g. an action effect shared across states,
+with a separate term for blocked moves) or data that punishes memorisation,
+which is what the plan's later items provide (many layouts with held-out
+layouts). The unknown threshold should be set from a quantile of trained-pair
+errors rather than a multiple of the median.
+
+## 8. Next steps
+
+Remaining step 12 items, in the build plan's order: random goals; many layouts
+with held-out layouts; a learned goal-distance head; then moving obstacles,
+partial observability and stochastic dynamics. Two smaller follow-ups from §7:
+a quantile-based unknown threshold, and an action-consistent predictor as a
+direct test of the inductive-bias explanation.

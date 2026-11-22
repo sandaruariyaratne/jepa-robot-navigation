@@ -39,7 +39,7 @@ def build_rungs(true_model, world, goal_frame, p2_horizon: int = 3) -> list[Rung
     learned_ctx = prepare(world, goal_frame)
     p2 = P2(p2_horizon)
     return [
-        Rung("Oracle", "true", "A*", true_model, Oracle(), true_ctx),
+        Rung("Oracle", "true", "A*", true_model, Oracle(getattr(true_model, "map", None)), true_ctx),
         Rung("D1", "true", "true", true_model, p2, true_ctx),
         Rung("D2", "true", "learned", true_model, p2,
              ModelContext(true_ctx.z_goal, true_ctx.goal_entry, learned_ctx.d_table)),
