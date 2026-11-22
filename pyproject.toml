@@ -1,0 +1,13 @@
+[project]
+name = "mini-jepa"
+version = "0.1.0"
+description = "Small action-conditioned latent world model for grid navigation"
+requires-python = ">=3.10"
+dependencies = ["numpy>=1.26", "pyyaml>=6", "torch>=2.2"]
+
+[project.optional-dependencies]
+viz = ["pygame>=2.5", "matplotlib>=3.8"]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
