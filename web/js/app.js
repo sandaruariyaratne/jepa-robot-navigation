@@ -9,7 +9,17 @@ const state = {
   start: [0, 4], robot: [0, 4], modelKey: "jepa", world: null, report: null,
   run: null, timer: null, trail: [[0, 4]], plan: null, outcome: null, t: 0, collisions: 0,
   speed: 330, showD: false, seed: 0,
+  mode: "full",          // full: picture of every cell; imagine: start + goal pictures only; explore: imagine + correct
+  imap: null, match: null, planMatch: null, seen: [],
 };
+const MODE_NOTES = {
+  full: "It is handed a picture of itself on every free cell before it starts (how the 100% results were measured).",
+  imagine: "Only the start and goal pictures: it imagines the rest. Faded cells are missing from its imagined map; "
+    + "dots mark the pictures it has really seen.",
+  explore: "Starts like Imagination only, then swaps imagined cells for what it really sees as it walks, and trusts "
+    + "moves it actually made. Faded = not imagined yet; dots = seen for real.",
+};
+const imagining = () => state.mode !== "full";
 const models = {};
 
 // --- model -----------------------------------------------------------------------------------
@@ -66,9 +76,19 @@ function placeRobot() {
 function drawBoard() {
   const dt = state.report ? state.report.dTrue : C.trueDistances(state.walls);
   const imagined = new Set();
-  if (state.plan && !state.outcome) {
-    for (const e of state.plan.entries) if (e >= 0) imagined.add(C.key(...state.world.cells[e]));
+  const planCells = planPath();
+  for (const c of planCells) imagined.add(C.key(...c));
+  const found = new Map();                 // imagine modes: cell -> smallest D of the nodes matching it
+  if (imagining() && state.imap && state.match) {
+    state.match.cellOf.forEach((ci, u) => {
+      if (ci < 0) return;
+      const k = C.key(...state.match.cells[ci]);
+      const d = state.imap.D[u];
+      const cur = found.get(k);
+      if (cur === undefined || (d >= 0 && (cur < 0 || d < cur))) found.set(k, d);
+    });
   }
+  const seen = new Set(imagining() ? state.seen.map((c) => C.key(...c)) : []);
   for (const b of cells) {
     const x = +b.dataset.x, y = +b.dataset.y, k = C.key(x, y);
     const wall = state.walls.has(k);
@@ -76,14 +96,16 @@ function drawBoard() {
     b.classList.toggle("goal", isGoal(x, y));
     b.classList.toggle("unreach", !wall && !dt.has(k));
     b.classList.toggle("imag", imagined.has(k));
+    b.classList.toggle("fog", imagining() && !wall && !found.has(k));
+    b.classList.toggle("seen", seen.has(k));
     const label = wall ? "wall" : isGoal(x, y) ? "goal" : "floor";
     b.setAttribute("aria-label", `cell ${x},${y}: ${label}`);
     const num = b.querySelector(".dnum");
     num.className = "dnum";
     num.textContent = "";
     if (state.showD && !wall && state.world) {
-      const i = state.world.index.get(k);
-      const d = state.world.D[i], truth = dt.has(k) ? dt.get(k) : -1;
+      const d = imagining() ? (found.has(k) ? found.get(k) : -1) : state.world.D[state.world.index.get(k)];
+      const truth = dt.has(k) ? dt.get(k) : -1;
       num.textContent = d < 0 ? "?" : String(d);
       if (d < 0 && truth >= 0) num.classList.add("unk");
       else if (d !== truth) num.classList.add("off");
@@ -91,15 +113,24 @@ function drawBoard() {
   }
   const pts = (list) => list.map(([x, y]) => `${x + 0.5},${y + 0.5}`).join(" ");
   svg.querySelector(".trail").setAttribute("points", pts(state.trail));
-  const plan = [];
-  if (state.plan && !state.outcome) {
-    plan.push(state.robot);
-    for (const e of state.plan.entries) { if (e < 0) break; plan.push(state.world.cells[e]); }
-  }
+  const plan = planCells.length ? [state.robot, ...planCells] : [];
   svg.querySelector(".planline").setAttribute("points", pts(plan));
   svg.querySelector(".plandots").innerHTML = plan.slice(1)
     .map(([x, y]) => `<circle class="plandot" cx="${x + 0.5}" cy="${y + 0.5}" r="0.09"/>`).join("");
   placeRobot();
+}
+
+/** Cells along the current plan; in the imagine modes a node that matches no real cell ends the line. */
+function planPath() {
+  if (!state.plan || state.outcome) return [];
+  const out = [];
+  for (const e of state.plan.entries) {
+    if (e < 0) break;
+    const ci = imagining() ? state.planMatch.cellOf[e] : e;
+    if (ci < 0) break;
+    out.push(imagining() ? state.planMatch.cells[ci] : state.world.cells[ci]);
+  }
+  return out;
 }
 
 // --- side panel ------------------------------------------------------------------------------------
@@ -121,21 +152,45 @@ function drawPlan() {
     el.innerHTML = `<span class="muted small">${state.outcome ? "Done." : "Press Run or Step."}</span>`;
     return;
   }
-  const { sequence, entries, note } = state.plan;
-  const D = state.world.D;
+  const { sequence, entries } = state.plan;
+  const note = imagining() ? state.plan.how !== "goal" : state.plan.note;
+  const D = imagining() ? state.planMap.D : state.world.D;
   const parts = sequence.map((a, k) => {
     const e = entries[k];
-    const where = e >= 0 ? (D[e] === 0 ? "goal" : `${D[e]} to go`) : "unsure";
+    const ghost = imagining() && e >= 0 && state.planMatch.cellOf[e] < 0;
+    const where = e < 0 ? "unsure" : ghost ? "a place that isn't there" : D[e] === 0 ? "goal" : D[e] < 0 ? "exploring" : `${D[e]} to go`;
     return `<span class="mv${k === 0 ? " first" : ""}${e < 0 ? " unk" : ""}">${ARROW[a]} <span class="small muted">${where}</span></span>`;
   });
-  el.innerHTML = parts.join("") + (note ? `<span class="small muted">no trusted route: heading for the goal picture</span>` : "");
+  const why = !note ? "" : imagining() && state.plan.how === "frontier"
+    ? "no route in its imagined map: going to look at a cell it has only imagined"
+    : "no trusted route: heading for the goal picture";
+  el.innerHTML = parts.join("") + (why ? `<span class="small muted">${why}</span>` : "");
 }
 
 function drawStats() {
   const r = state.report;
   if (!r) return;
   const row = (dt, dd, cls = "") => `<dt>${dt}</dt><dd class="${cls}">${dd}</dd>`;
-  $("#stats").innerHTML =
+  if (imagining() && state.imap && state.match) {
+    const { cellOf, cells: mc } = state.match;
+    const foundCells = new Set(cellOf.filter((c) => c >= 0));
+    const ghosts = cellOf.filter((c) => c < 0).length;
+    let edges = 0, right = 0;
+    cellOf.forEach((ci, u) => {
+      if (ci < 0) return;
+      for (let a = 0; a < C.ACTIONS.length; a++) {
+        edges++;
+        const t = state.world.index.get(C.key(...C.transition(state.walls, mc[ci], a).pos));
+        if (cellOf[state.imap.next[u][a]] === t) right++;
+      }
+    });
+    $("#stats").innerHTML =
+      row("Cells its imagination found", `${foundCells.size} / ${mc.length}`, foundCells.size === mc.length ? "ok" : "warn") +
+      row("Imagined places that don't exist", ghosts, ghosts ? "warn" : "ok") +
+      row("Imagined moves that match reality", `${right} / ${edges}`, right === edges ? "ok" : "") +
+      row("Real pictures it has used", state.imap.nAnchors) +
+      row("Walls on this map", state.walls.size);
+  } else $("#stats").innerHTML =
     row("Imagined moves that match reality", `${r.correct} / ${r.edges}`, r.correct === r.edges ? "ok" : "") +
     row("Moves it isn't sure about (treated as walls)", r.unknown, r.unknown ? "warn" : "") +
     row("Wrong moves it trusted", r.wrongTrusted, r.wrongTrusted ? "bad" : "ok") +
@@ -171,16 +226,38 @@ function resetRun() {
   stop();
   state.run = null; state.plan = null; state.outcome = null; state.t = 0; state.collisions = 0;
   state.robot = [...state.start]; state.trail = [[...state.start]];
+  state.imap = state.match = state.planMatch = state.planMap = null; state.seen = [];
+  if (imagining() && models.jepa && state.world) {
+    state.run = newRun();
+    const v = state.run.next().value;                 // the imagined map before the first move
+    setImagined(v);
+  }
   idleStatus();
   drawAll();
+}
+
+function newRun() {
+  return imagining() ? C.runImagined(models.jepa, state.walls, state.start, state.seed, state.mode)
+    : C.runEpisode(state.world, state.start, state.seed);
+}
+
+function setImagined(v) {
+  state.imap = v.map;
+  state.match = C.matchCells(models.jepa, state.walls, v.map, state.world.codebook);
+  state.seen = state.mode === "explore" ? [...v.path, C.GOAL] : [state.start, C.GOAL];
+  if (v.planMap) {
+    state.planMap = v.planMap;
+    state.planMatch = v.planMap === v.map ? state.match : C.matchCells(models.jepa, state.walls, v.planMap, state.world.codebook);
+  }
 }
 
 function stepOnce() {
   if (!state.world) return;
   if (state.outcome) resetRun();
-  if (!state.run) state.run = C.runEpisode(state.world, state.start, state.seed);
+  if (!state.run) { if (imagining()) resetRun(); else state.run = newRun(); }
   const { value, done } = state.run.next();
   if (done || !value) { stop(); return; }
+  if (imagining()) setImagined(value);
   state.robot = value.pos; state.trail = value.path; state.plan = value.plan; state.t = value.t;
   state.collisions = value.collisions;
   if (value.collision) {
@@ -199,8 +276,12 @@ function stepOnce() {
     } else if (value.outcome === "loop") setStatus(`Stuck: it came back to the same cell 3 times after ${value.t} moves.`, "fail");
     else setStatus(`Gave up after ${value.t} moves without reaching the goal.`, "fail");
   } else {
-    setStatus(`Move ${value.t}: imagined 64 futures, chose ${C.ACTION_NAMES[value.plan.action]}`
-      + (value.collision ? " and bumped into a wall." : "."));
+    const how = value.plan.how;
+    const why = how === "frontier" ? ": no route in its imagined map, so it went to look"
+      : how === "fallback" ? ": nothing known, heading for the goal picture" : "";
+    setStatus(`Move ${value.t}: imagined 64 futures, chose ${C.ACTION_NAMES[value.plan.action]}${why}`
+      + (value.collision ? " and bumped into a wall" : "")
+      + (value.rebuilt ? ". New cell seen: re-imagined the map around it." : "."));
   }
   drawAll();
 }
@@ -368,6 +449,23 @@ $("#clear").addEventListener("click", () => loadLayout(new Set(), [...state.star
 $("#run").addEventListener("click", play);
 $("#step").addEventListener("click", () => { stop(); stepOnce(); });
 $("#reset").addEventListener("click", resetRun);
+function setMode(mode) {
+  state.mode = mode;
+  document.querySelectorAll(".seg-btn").forEach((b) => b.setAttribute("aria-checked", String(b.dataset.mode === mode)));
+  $("#modeNote").textContent = MODE_NOTES[mode];
+  resetRun();
+}
+document.querySelectorAll(".seg-btn").forEach((b) => b.addEventListener("click", () => setMode(b.dataset.mode)));
+$(".seg").addEventListener("keydown", (e) => {
+  const order = ["full", "imagine", "explore"];
+  const d = e.key === "ArrowRight" || e.key === "ArrowDown" ? 1 : e.key === "ArrowLeft" || e.key === "ArrowUp" ? -1 : 0;
+  if (!d) return;
+  e.preventDefault();
+  const m = order[(order.indexOf(state.mode) + d + order.length) % order.length];
+  setMode(m);
+  document.querySelector(`.seg-btn[data-mode="${m}"]`).focus();
+});
+$("#modeNote").textContent = MODE_NOTES.full;
 $("#showD").addEventListener("change", (e) => { state.showD = e.target.checked; drawBoard(); });
 $("#speed").addEventListener("change", (e) => {
   state.speed = +e.target.value;

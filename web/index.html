@@ -42,6 +42,16 @@
           <p class="hint">Tap a cell to add or remove a wall · drag across cells to paint · drag the robot to move it</p>
         </div>
 
+        <div class="mode" role="radiogroup" aria-labelledby="modeLabel">
+          <span id="modeLabel" class="mode-label">What it gets</span>
+          <div class="seg">
+            <button type="button" role="radio" class="seg-btn" data-mode="full" aria-checked="true">Picture of every cell</button>
+            <button type="button" role="radio" class="seg-btn" data-mode="imagine" aria-checked="false">Imagination only</button>
+            <button type="button" role="radio" class="seg-btn" data-mode="explore" aria-checked="false">Imagine + explore</button>
+          </div>
+          <p id="modeNote" class="mode-note"></p>
+        </div>
+
         <div class="controls">
           <button id="run" class="btn primary" type="button">▶ Run</button>
           <button id="step" class="btn" type="button">Step</button>
@@ -104,6 +114,11 @@
         itself, so that the latent space makes moves predictable rather than just redrawing the picture. On 1,200 maps it
         never saw (normal maps, dense walls and winding mazes), it reaches the goal by a shortest path 100% of the time. A model
         with the same networks trained to redraw the next picture instead solves 79% of the mazes.</p>
+      <p class="small"><b>Without the free pictures.</b> In the first mode the robot is handed a picture of itself on
+        every free cell before it starts. In <i>Imagination only</i> it gets just the start and goal pictures and has to
+        imagine the rest of the map; its imagination drifts after 3–4 moves, so on long mazes it reaches the goal only 41%
+        of the time. In <i>Imagine + explore</i> it replaces imagined cells with what it really sees as it walks and trusts
+        moves it actually made over imagined ones: 83% of mazes, 99.6% of ordinary maps.</p>
       <p class="small muted">Trained on 70 maps with 3–7 walls; the goal is always top-right. The model runs entirely in your
         browser (about 1 MB of weights, no server). Built from the
         <a href="https://github.com/sandaruariyaratne/jepa-robot-navigation" target="_blank" rel="noopener">project's</a>

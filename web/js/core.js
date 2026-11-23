@@ -290,3 +290,166 @@ export function runToEnd(world, start, seed = 0) {
   for (const s of runEpisode(world, start, seed)) last = s;
   return last;
 }
+
+// --- without a picture of every cell: imagine the map (A) or explore (B) -------------------------
+// Mirrors multimap/explore.py. Anchors are latents of real pictures (start, goal, and in "explore" every
+// picture seen so far). The map grows breadth first: a prediction within the threshold of a node is that node,
+// otherwise it is a new, imagined node. Experienced moves override imagined edges; with no route to the goal
+// the explorer heads for the nearest node it has only imagined.
+
+function bfsTo(next, targets) {            // steps from every node to the nearest target over `next` (-1 = none)
+  const n = next.length;
+  const preds = Array.from({ length: n }, () => new Set());
+  for (let u = 0; u < n; u++) for (const v of next[u]) if (v !== u) preds[v].add(u);
+  const D = new Array(n).fill(-1);
+  const queue = [];
+  for (const t of targets) { D[t] = 0; queue.push(t); }
+  while (queue.length) {
+    const v = queue.shift();
+    for (const u of [...preds[v]].sort((p, q) => p - q)) if (D[u] === -1) { D[u] = D[v] + 1; queue.push(u); }
+  }
+  return D;
+}
+
+/** Nodes reachable in imagination from the anchors (anchors first). */
+export function growMap(model, anchors, threshold, maxNodes = 60) {
+  const nodes = [...anchors];
+  let frontier = nodes.map((_, i) => i), overflow = false;
+  while (frontier.length) {
+    const preds = [];
+    for (const u of frontier) for (let a = 0; a < ACTIONS.length; a++) preds.push(model.step(nodes[u], a));
+    const nxt = [];
+    for (const p of preds) {
+      if (snap(p, nodes).distance <= threshold) continue;      // an existing node, or a blocked move
+      if (nodes.length >= maxNodes) { overflow = true; continue; }
+      nodes.push(p);
+      nxt.push(nodes.length - 1);
+    }
+    frontier = nxt;
+  }
+  return { nodes, overflow };
+}
+
+function graphOf(model, codebook, threshold) {
+  const next = [], known = [];
+  codebook.forEach((z, i) => {
+    const row = [], kr = [];
+    for (let a = 0; a < ACTIONS.length; a++) {
+      const s = snap(model.step(z, a), codebook);
+      kr.push(s.distance <= threshold); row.push(s.distance <= threshold ? s.index : i);
+    }
+    next.push(row); known.push(kr);
+  });
+  return { next, known };
+}
+
+/** The imagined map: codebook = grown nodes, graph, D, frontier distances, experience applied. */
+export function imaginedMap(model, anchors, goal, experienced = new Map(), explore = false) {
+  const thr = model.threshold;
+  const { nodes, overflow } = growMap(model, anchors, thr);
+  const g = graphOf(model, nodes, thr);
+  for (const [k, v] of experienced) { const u = Math.floor(k / 4), a = k % 4; g.next[u][a] = v; g.known[u][a] = true; }
+  const D = bfsTo(g.next, [goal]);
+  const frontier = [];
+  for (let i = anchors.length; i < nodes.length; i++) frontier.push(i);
+  return { codebook: nodes, nAnchors: anchors.length, next: g.next, known: g.known, D, goal, overflow,
+           dFrontier: explore ? bfsTo(g.next, frontier) : null };
+}
+
+/** Display only (never used by the agent): match nodes to the true cells' latents. */
+export function matchCells(model, walls, map, cellLatents) {
+  const cells = freeCells(walls);
+  const lat = cellLatents || cells.map((c) => model.encode(render(walls, c)));
+  const cellOf = map.codebook.map((z) => { const s = snap(z, lat); return s.distance <= model.threshold ? s.index : -1; });
+  return { cells, lat, cellOf };
+}
+
+/** Snapped P2 as a walk on the graph: every 3-move sequence, cost = min_k [k + dist(node_k)] + revisit penalty. */
+export function planGraph(map, node, zGoal, visits, rng, model) {
+  const { horizon, revisit_penalty: penalty } = model.meta.planning;
+  const A = ACTIONS.length, S = A ** horizon;
+  const seqs = [];
+  for (let s = 0; s < S; s++) { const q = []; let r = s; for (let k = horizon - 1; k >= 0; k--) { q[k] = r % A; r = Math.floor(r / A); } seqs.push(q); }
+  const score = (dist) => seqs.map((seq) => {
+    let cur = node, trusted = true, best = Infinity, firstNode = -1, firstKnown = false;
+    const entries = [];
+    seq.forEach((a, k) => {
+      trusted = trusted && map.known[cur][a];
+      cur = map.next[cur][a];
+      if (k === 0) { firstNode = cur; firstKnown = trusted; }
+      entries.push(trusted ? cur : -1);
+      if (trusted && dist[cur] >= 0) best = Math.min(best, k + 1 + dist[cur]);
+    });
+    const rev = firstKnown ? penalty * (visits.get(firstNode) || 0) : 0;
+    return { seq, entries, last: cur, cost: best + rev, rev };
+  });
+  let cand = score(map.D), how = "goal";
+  if (!cand.some((c) => Number.isFinite(c.cost)) && map.dFrontier) { cand = score(map.dFrontier); how = "frontier"; }
+  if (!cand.some((c) => Number.isFinite(c.cost))) {
+    how = "fallback";
+    for (const c of cand) {
+      const zl = map.codebook[c.last];
+      let d = 0;
+      for (let j = 0; j < zl.length; j++) d += (zl[j] - zGoal[j]) ** 2;
+      c.cost = d + c.rev;
+    }
+  }
+  const min = Math.min(...cand.map((c) => c.cost));
+  const ties = cand.map((c, i) => (c.cost === min ? i : -1)).filter((i) => i >= 0);
+  const pick = cand[ties.length === 1 ? ties[0] : ties[Math.floor(rng() * ties.length)]];
+  return { action: pick.seq[0], sequence: pick.seq, entries: pick.entries, cost: pick.cost, how };
+}
+
+/** MPC loop without privileged pictures. mode: "imagine" (A) or "explore" (B). Yields after every action. */
+export function* runImagined(model, walls, start, seed = 0, mode = "imagine") {
+  const { max_actions: maxActions, max_visits: maxVisits } = model.meta.planning;
+  const explore = mode === "explore";
+  const rng = mulberry32(seed);
+  const enc = (p) => model.encode(render(walls, p));
+  const zGoal = enc(GOAL);
+  let z = enc(start);
+  let anchors = [z, zGoal];
+  const experienced = new Map();
+  let map = imaginedMap(model, anchors, 1, experienced, explore);
+  let node = 0;
+  const visits = new Map([[node, 1]]);
+  const cellVisits = new Map([[key(...start), 1]]);
+  let pos = start, collisions = 0, rebuilds = 0;
+  const path = [pos];
+  yield { t: 0, pos, map, anchors: anchors.length, path: [...path], done: false, initial: true };
+  for (let t = 0; t < maxActions; t++) {
+    const planMap = map;
+    const plan = planGraph(map, node, zGoal, visits, rng, model);
+    const r = transition(walls, pos, plan.action);
+    pos = r.pos;
+    path.push(pos);
+    collisions += r.collision ? 1 : 0;
+    const k = key(...pos);
+    cellVisits.set(k, (cellVisits.get(k) || 0) + 1);
+    z = enc(pos);
+    let rebuilt = false;
+    if (explore) {
+      const s = snap(z, anchors);
+      let to = s.index;
+      if (s.distance > 1e-4) { anchors = [...anchors, z]; to = anchors.length - 1; rebuilt = true; rebuilds++; }
+      experienced.set(node * 4 + plan.action, to);
+      map = imaginedMap(model, anchors, 1, experienced, true);
+      node = to;
+    } else {
+      node = snap(z, map.codebook).index;
+    }
+    visits.set(node, (visits.get(node) || 0) + 1);
+    const atGoal = pos[0] === GOAL[0] && pos[1] === GOAL[1];
+    const loop = !atGoal && cellVisits.get(k) >= maxVisits;
+    const done = atGoal || loop || t === maxActions - 1;
+    yield { t: t + 1, pos, plan, planMap, map, anchors: anchors.length, collision: r.collision, collisions, rebuilt, rebuilds,
+            path: [...path], done, outcome: atGoal ? "goal" : loop ? "loop" : done ? "timeout" : null };
+    if (done) return;
+  }
+}
+
+export function runImaginedToEnd(model, walls, start, seed = 0, mode = "imagine") {
+  let last = null;
+  for (const s of runImagined(model, walls, start, seed, mode)) last = s;
+  return last;
+}

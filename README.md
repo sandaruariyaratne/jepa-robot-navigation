@@ -89,13 +89,16 @@ Findings: [REPORT.md §8–11](REPORT.md#8-multi-map-experiments-held-out-layout
 ### Interactive web demo
 
 [web/](web/) runs the trained multi-map models in the browser: drag walls to build a map,
-and the robot plans with the joint JEPA from the rendered pixels. Plain JavaScript,
+and the robot plans with the joint JEPA from the rendered pixels. A switch chooses what it gets:
+a picture of every cell, only the start and goal pictures (imagination only), or those
+plus what it sees while walking (imagine + explore), as in REPORT.md §11. Plain JavaScript,
 no build step and no server (about 1 MB of weights).
 
 ```
 .venv/bin/python web/export_models.py          # weights + test vectors from the checkpoints
 node web/test/check.mjs                        # JS port vs PyTorch: frames, graph, D(c) exact
 node web/test/check.mjs --bench                # JS planner on 300 test maps vs the Python numbers
+node web/test/explore_bench.mjs maze_maps 50    # JS imagination-only / explore modes vs multimap.explore
 cd web && python -m http.server 8765           # open http://127.0.0.1:8765
 ```
 
