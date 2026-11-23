@@ -12,6 +12,18 @@
  "default_threshold": 4.245429039001465,
  "unknown_threshold": 7.046285629272461,
  "unknown_rule": "99.9% quantile of correct one-step snap distances, validation maps",
+ "grid": {
+  "cols": 6,
+  "rows": 5,
+  "goal": [
+   5,
+   0
+  ],
+  "view_radius": null
+ },
+ "imagined": {
+  "max_nodes": 60
+ },
  "planning": {
   "horizon": 3,
   "max_actions": 30,

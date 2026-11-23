@@ -10,122 +10,179 @@
   <meta property="og:type" content="website">
   <meta property="og:image" content="og.png">
   <meta name="twitter:card" content="summary_large_image">
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><rect width='16' height='16' rx='3' fill='%23e3e9ef'/><rect x='3' y='3' width='10' height='10' rx='2' fill='%232a5ea8'/></svg>">
-  <link rel="stylesheet" href="style.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 6 5'><rect width='6' height='5' fill='%23e3e9ef'/><rect x='2' y='1' width='1' height='3' fill='%237f8a96'/><rect x='5' width='1' height='1' fill='%230d7a70'/><rect y='4' width='1' height='1' fill='%232a5ea8'/></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Next:wght@400;500;700&family=Familjen+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css?v=11">
 </head>
 <body>
   <header class="top">
-    <div class="brand">
-      <span class="logo" aria-hidden="true"></span>
-      <span>Mini-JEPA</span>
-    </div>
-    <a class="gh" href="https://github.com/sandaruariyaratne/jepa-robot-navigation" target="_blank" rel="noopener">Code &amp; report ↗</a>
+    <a class="brand" href="./" aria-label="Mini-JEPA home">
+      <svg class="mark" viewBox="0 0 6 5" aria-hidden="true">
+        <rect width="6" height="5" class="m-floor"/><rect x="2" y="1" width="1" height="3" class="m-wall"/>
+        <rect x="4" y="3" width="1" height="2" class="m-wall"/><rect x="5" width="1" height="1" class="m-goal"/>
+        <rect y="4" width="1" height="1" class="m-robot"/>
+      </svg>
+      Mini-JEPA
+    </a>
+    <a class="gh" href="https://github.com/sandaruariyaratne/jepa-robot-navigation" target="_blank" rel="noopener">Code and report</a>
   </header>
 
   <main>
     <section class="intro">
-      <h1>A robot that plans in its imagination</h1>
-      <p>Build any maze. The robot has never seen it. It looks at the 48×40-pixel picture, imagines what each
-        move would do with a <strong>JEPA world model</strong> trained on 70 other maps, and plans its way to the goal.</p>
+      <h1>A robot that plans<br> in its imagination</h1>
+      <p>Build any maze. The robot has never seen it. It looks at a tiny picture, imagines what each move
+        would do with a JEPA world model trained on 70 other maps, and plans its way to the goal. Switch on fog of war
+        and the picture shows only the cells right next to it.</p>
+      <ul class="key" aria-label="Colour key">
+        <li><span class="sw sw-robot"></span>What really happens</li>
+        <li><span class="sw sw-dream"></span>What it imagines</li>
+      </ul>
     </section>
 
-    <div class="layout">
-      <section class="card board-card" aria-label="Map editor">
-        <div class="board-wrap">
+    <div class="lab">
+      <header class="p-head p-real">
+        <h2>Real map</h2>
+        <p>The environment. Only used to execute moves and to score.</p>
+      </header>
+      <section class="world" aria-label="Map editor">
+        <div class="table">
           <div id="board" class="board" role="grid" aria-label="6 by 5 grid world"></div>
         </div>
+      </section>
 
-        <div class="palette">
-          <button id="wallChip" class="chip wall-chip" type="button" aria-label="Drag a wall onto the grid">
-            <span class="chip-tile" aria-hidden="true"></span>Drag a wall
-          </button>
-          <p class="hint">Tap a cell to add or remove a wall · drag across cells to paint · drag the robot to move it</p>
+      <header class="p-head p-dream">
+        <h2>Imagined graph</h2>
+        <p>What the predictor thinks each move does, after snapping. This is what it plans on.</p>
+      </header>
+      <section class="dream" aria-label="Imagined transition graph">
+        <div class="table table-dream">
+          <svg id="graph" class="graph" viewBox="-0.45 -0.375 6.9 5.75" role="img" aria-label="Imagined transition graph"></svg>
         </div>
+        <ul class="g-key" aria-label="Graph key">
+          <li><svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="5.5" class="k-real"/></svg>Encoded real frame</li>
+          <li><svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="5" class="k-imag"/></svg>Imagined node</li>
+          <li><svg viewBox="0 0 24 16" aria-hidden="true"><line x1="2" y1="8" x2="22" y2="8" class="k-edge"/></svg>Predicted move</li>
+          <li><svg viewBox="0 0 24 16" aria-hidden="true"><line x1="2" y1="8" x2="22" y2="8" class="k-wrong"/></svg>Wrong, but trusted</li>
+          <li><svg viewBox="0 0 24 16" aria-hidden="true"><line x1="2" y1="8" x2="16" y2="8" class="k-unsure"/></svg>Low confidence, masked</li>
+        </ul>
+        <p class="g-note">Nodes are drawn at the cell whose frame they match, for display only. The robot never sees coordinates.</p>
+      </section>
 
-        <div class="mode" role="radiogroup" aria-labelledby="modeLabel">
-          <span id="modeLabel" class="mode-label">What it gets</span>
-          <div class="seg">
-            <button type="button" role="radio" class="seg-btn" data-mode="full" aria-checked="true">Picture of every cell</button>
-            <button type="button" role="radio" class="seg-btn" data-mode="imagine" aria-checked="false">Imagination only</button>
-            <button type="button" role="radio" class="seg-btn" data-mode="explore" aria-checked="false">Imagine + explore</button>
+      <div id="status" class="status" role="status" aria-live="polite">Loading the model…</div>
+
+      <section class="controls" aria-label="Controls">
+        <div class="deck">
+          <div class="transport">
+            <button id="run" class="btn run" type="button">
+              <svg class="ico" viewBox="0 0 16 16" aria-hidden="true"><path class="i-play" d="M4 2.5v11l9.5-5.5z"/><path class="i-pause" d="M3.5 2.5h3.2v11H3.5zM9.3 2.5h3.2v11H9.3z"/></svg>
+              <span class="run-label">Run</span>
+            </button>
+            <button id="step" class="btn" type="button">Step</button>
+            <button id="reset" class="btn" type="button">Reset</button>
+            <div class="speed" role="radiogroup" aria-label="Speed">
+              <button type="button" role="radio" data-speed="650" aria-checked="false">Slow</button>
+              <button type="button" role="radio" data-speed="330" aria-checked="true">Normal</button>
+              <button type="button" role="radio" data-speed="120" aria-checked="false">Fast</button>
+            </div>
           </div>
-          <p id="modeNote" class="mode-note"></p>
-        </div>
 
-        <div class="controls">
-          <button id="run" class="btn primary" type="button">▶ Run</button>
-          <button id="step" class="btn" type="button">Step</button>
-          <button id="reset" class="btn" type="button">Reset</button>
-          <span class="sep" aria-hidden="true"></span>
-          <button id="random" class="btn ghost" type="button">Random map</button>
-          <button id="zigzag" class="btn ghost" type="button">Zig-zag</button>
-          <button id="maze" class="btn ghost" type="button">Hard maze</button>
-          <button id="clear" class="btn ghost" type="button">Clear</button>
-        </div>
+          <div class="maps">
+            <button id="wallChip" class="wall-chip" type="button" aria-label="Drag a wall onto the board">
+              <span class="chip-tile" aria-hidden="true"></span>
+              <span>Drag a wall<span class="chip-sub">or tap and drag across cells</span></span>
+            </button>
+            <div class="presets" role="group" aria-label="Load a map">
+              <button id="random" class="link-btn" type="button">Random map</button>
+              <button id="zigzag" class="link-btn" type="button">Zig-zag</button>
+              <button id="maze" class="link-btn" type="button">Hard maze</button>
+              <button id="clear" class="link-btn" type="button">Clear walls</button>
+            </div>
+          </div>
 
-        <div class="row-opts">
-          <label class="toggle"><input id="showD" type="checkbox"> Show imagined steps-to-goal</label>
-          <label class="speed">Speed
-            <select id="speed">
-              <option value="650">Slow</option>
-              <option value="330" selected>Normal</option>
-              <option value="120">Fast</option>
-            </select>
+          <div class="mode">
+            <span id="worldLabel" class="field-label">World</span>
+            <div class="seg seg-world" role="radiogroup" aria-labelledby="worldLabel">
+              <span class="seg-thumb" aria-hidden="true"></span>
+              <button type="button" role="radio" class="seg-btn" data-world="jepa" aria-checked="true">6 × 5, sees the whole map</button>
+              <button type="button" role="radio" class="seg-btn" data-world="fog" aria-checked="false">10 × 10, fog of war</button>
+            </div>
+            <p id="worldNote" class="mode-note"></p>
+          </div>
+
+          <div class="mode">
+            <span id="modeLabel" class="field-label">What the robot is given</span>
+            <div class="seg seg-mode" role="radiogroup" aria-labelledby="modeLabel">
+              <span class="seg-thumb" aria-hidden="true"></span>
+              <button type="button" role="radio" class="seg-btn" data-mode="full" aria-checked="true">A picture of every cell</button>
+              <button type="button" role="radio" class="seg-btn" data-mode="imagine" aria-checked="false">Start and goal only</button>
+              <button type="button" role="radio" class="seg-btn" data-mode="explore" aria-checked="false">Start and goal, then explore</button>
+            </div>
+            <p id="modeNote" class="mode-note"></p>
+          </div>
+
+          <label class="switch">
+            <input id="showD" type="checkbox">
+            <span class="track" aria-hidden="true"></span>
+            Show how many steps it thinks each cell is from the goal
           </label>
         </div>
       </section>
 
-      <section class="card side" aria-label="Inside the robot">
-        <div id="status" class="status" role="status" aria-live="polite">Loading the model…</div>
+      <section class="mind" aria-label="Inside the robot">
+        <figure class="eye">
+          <div class="eye-frame"><canvas id="view" width="48" height="40" aria-label="What the robot sees"></canvas></div>
+          <figcaption><b>Its only input.</b> <span id="viewSize">48×40 pixels</span>, redrawn after every move. No coordinates, no map.</figcaption>
+        </figure>
 
-        <div class="eyes">
-          <canvas id="view" width="48" height="40" aria-label="What the robot sees"></canvas>
-          <div>
-            <div class="label">What it sees</div>
-            <p class="small">48×40 RGB pixels. No coordinates or map: this picture is its only input.</p>
-          </div>
+        <div class="block">
+          <h3>The three moves it imagined this step</h3>
+          <ol id="plan" class="plan" aria-live="off"></ol>
+          <p id="planWhy" class="plan-why"></p>
         </div>
 
         <div class="block">
-          <div class="label">Its current plan <span class="small muted">(3 imagined moves, re-planned every step)</span></div>
-          <div id="plan" class="plan"><span class="muted small">Press Run or Step.</span></div>
-        </div>
-
-        <div class="block">
-          <div class="label">Imagination vs reality, this map</div>
-          <dl class="stats" id="stats"></dl>
-          <div id="wallNote" class="pill" hidden></div>
+          <h3>Imagination against reality on this map</h3>
+          <dl class="ledger" id="stats"></dl>
+          <p id="wallNote" class="note" hidden></p>
         </div>
       </section>
     </div>
 
-    <section class="how">
-      <h2>How it works</h2>
+    <section class="how" aria-labelledby="howTitle">
+      <h2 id="howTitle">How it works</h2>
       <ol class="steps">
-        <li><b>See.</b> A small CNN encoder turns the 48×40 picture into a 64-number latent state.</li>
-        <li><b>Imagine.</b> A predictor guesses the next latent for each of the 4 moves, without touching the real world.
-          Doing this from every cell gives an imagined map of where every move leads.</li>
-        <li><b>Plan.</b> It tries all 64 three-move sequences in imagination and scores each by how close it gets to the goal on
-          that imagined map. Every imagined move is snapped to the closest cell picture it knows before the next one, so
-          its imagination can't drift; moves it isn't sure about are treated as walls.</li>
-        <li><b>Act.</b> It makes the first move, looks again, and re-plans.</li>
+        <li><h3>See</h3><p>A small CNN encoder turns the picture (48×40 pixels, or 80×80 in the fog world) into a 64-number latent state.</p></li>
+        <li><h3>Imagine</h3><p>A predictor guesses the next latent for each of the 4 moves, without touching the real world.
+          Doing this from every cell gives an imagined map of where every move leads.</p></li>
+        <li><h3>Plan</h3><p>It tries all 64 three-move sequences in imagination and scores each by how close it gets to the goal
+          on that imagined map. Each imagined move snaps to the nearest cell picture it knows, so its imagination can't drift;
+          moves it isn't sure about count as walls.</p></li>
+        <li><h3>Act</h3><p>It makes the first move, looks again, and plans again.</p></li>
       </ol>
-      <p class="small"><b>Why JEPA.</b> The encoder is trained together with the predictor, against a slowly updated copy of
-        itself, so that the latent space makes moves predictable rather than just redrawing the picture. On 1,200 maps it
-        never saw (normal maps, dense walls and winding mazes), it reaches the goal by a shortest path 100% of the time. A model
-        with the same networks trained to redraw the next picture instead solves 79% of the mazes.</p>
-      <p class="small"><b>Without the free pictures.</b> In the first mode the robot is handed a picture of itself on
-        every free cell before it starts. In <i>Imagination only</i> it gets just the start and goal pictures and has to
-        imagine the rest of the map; its imagination drifts after 3–4 moves, so on long mazes it reaches the goal only 41%
-        of the time. In <i>Imagine + explore</i> it replaces imagined cells with what it really sees as it walks and trusts
-        moves it actually made over imagined ones: 83% of mazes, 99.6% of ordinary maps.</p>
-      <p class="small muted">Trained on 70 maps with 3–7 walls; the goal is always top-right. The model runs entirely in your
-        browser (about 1 MB of weights, no server). Built from the
-        <a href="https://github.com/sandaruariyaratne/jepa-robot-navigation" target="_blank" rel="noopener">project's</a>
-        PyTorch checkpoints and checked against them number for number.</p>
+      <div class="prose">
+        <p><b>Why JEPA.</b> The encoder is trained together with the predictor, against a slowly updated copy of
+          itself, so the latent space makes moves predictable rather than just redrawing the picture. On 1,200 maps it
+          never saw (normal maps, dense walls and winding mazes), it reaches the goal by a shortest path 100% of the time.
+          A model with the same networks trained to redraw the next picture instead solves 79% of the mazes.</p>
+        <p><b>Without the free pictures.</b> With <i>a picture of every cell</i>, the robot is shown itself on every free
+          cell before it starts. With <i>start and goal only</i> it has to imagine the rest of the map; its imagination
+          drifts after 3–4 moves, so on long mazes it reaches the goal only 41% of the time. With <i>start and goal, then
+          explore</i> it swaps imagined cells for what it really sees as it walks and trusts moves it actually made over
+          imagined ones: 83% of mazes, 99.6% of ordinary maps.</p>
+        <p><b>Fog of war.</b> In the 10 × 10 world every picture shows only the 3 × 3 cells around the robot. A second
+          model, trained the same way on 70 fogged maps, can't know what lies behind the fog, so imagining the map from
+          the start and goal pictures mostly fails (14% of mazes). Exploring, it reached the goal on 100% of 200 unseen
+          test maps and 97.8% of 100 mazes, with detours where it has to go and look first.</p>
+        <p class="fine">Trained on 70 maps with 3–7 walls (fog world: 10–25); the goal is always top-right. The models run
+          entirely in your browser (about 3 MB of weights, no server). Built from the
+          <a href="https://github.com/sandaruariyaratne/jepa-robot-navigation" target="_blank" rel="noopener">project's</a>
+          PyTorch checkpoints and checked against them number for number.</p>
+      </div>
     </section>
   </main>
 
-  <script type="module" src="js/app.js"></script>
+  <script type="module" src="js/app.js?v=11"></script>
 </body>
 </html>

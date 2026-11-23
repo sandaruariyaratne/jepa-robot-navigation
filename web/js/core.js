@@ -3,13 +3,24 @@
 // planning/{imagination,latent_graph,planner,mpc}.py. No DOM here, so Node can test it
 // against PyTorch (web/test/check.mjs).
 
-export const COLS = 6, ROWS = 5, CELL_PX = 8, H = ROWS * CELL_PX, W = COLS * CELL_PX;
-export const GOAL = [5, 0];
+// The grid is a live binding: setGrid() switches between the 6 x 5 world and the 10 x 10 fog-of-war world.
+export const CELL_PX = 8;
+export let COLS = 6, ROWS = 5, H = ROWS * CELL_PX, W = COLS * CELL_PX, GOAL = [5, 0], VIEW_RADIUS = null;
+
+/** grid = model.meta.grid ({cols, rows, goal, view_radius}); the 6 x 5 defaults if absent. */
+export function setGrid(grid = {}) {
+  COLS = grid.cols ?? 6; ROWS = grid.rows ?? 5; GOAL = grid.goal ?? [5, 0]; VIEW_RADIUS = grid.view_radius ?? null;
+  H = ROWS * CELL_PX; W = COLS * CELL_PX;
+}
 export const ACTIONS = [[0, -1], [0, 1], [-1, 0], [1, 0]];          // UP, DOWN, LEFT, RIGHT
 export const ACTION_NAMES = ["up", "down", "left", "right"];
 export const COLORS = {
   line: [200, 208, 216], floor: [227, 233, 239], wall: [127, 138, 150], goal: [13, 122, 112], robot: [42, 94, 168],
+  fog: [52, 58, 68],                                   // cells outside the robot's view (VIEW_RADIUS)
 };
+/** Inside the robot's view (always, without fog). */
+export const inView = (pos, x, y) => VIEW_RADIUS === null || !pos
+  || Math.max(Math.abs(x - pos[0]), Math.abs(y - pos[1])) <= VIEW_RADIUS;
 
 export const key = (x, y) => `${x},${y}`;
 export const inBounds = (x, y) => x >= 0 && x < COLS && y >= 0 && y < ROWS;
@@ -42,14 +53,14 @@ export function trueDistances(walls) {
 }
 
 // --- renderer: exactly environment/renderer.py ------------------------------------------
-/** Frame with the robot at pos: Uint8Array, CHW 3 x 40 x 48. */
+/** Frame with the robot at pos: Uint8Array, CHW 3 x H x W (fog outside the view radius, if any). */
 export function render(walls, pos) {
   const img = new Uint8Array(3 * H * W);
   const put = (px, py, c) => { for (let ch = 0; ch < 3; ch++) img[ch * H * W + py * W + px] = c[ch]; };
   for (let py = 0; py < H; py++) for (let px = 0; px < W; px++) put(px, py, COLORS.line);
   for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) {
     const isRobot = pos && x === pos[0] && y === pos[1];
-    const c = isRobot ? COLORS.robot : walls.has(key(x, y)) ? COLORS.wall
+    const c = isRobot ? COLORS.robot : !inView(pos, x, y) ? COLORS.fog : walls.has(key(x, y)) ? COLORS.wall
       : (x === GOAL[0] && y === GOAL[1]) ? COLORS.goal : COLORS.floor;
     for (let py = y * CELL_PX + 1; py < (y + 1) * CELL_PX; py++)
       for (let px = x * CELL_PX + 1; px < (x + 1) * CELL_PX; px++) put(px, py, c);
@@ -94,10 +105,12 @@ export function loadModel(meta, buffer) {
   const t = {};
   for (const s of meta.tensors) t[s.name] = all.subarray(s.offset, s.offset + s.size);
   const D = meta.latent_dim, hidden = meta.hidden, A = meta.n_actions;
+  const fh = (meta.grid?.rows ?? 5) * CELL_PX, fw = (meta.grid?.cols ?? 6) * CELL_PX;   // this model's frame size
   const encode = (frame) => {
+    if (frame.length !== 3 * fh * fw) throw new Error(`frame is not 3 x ${fh} x ${fw}: call setGrid(meta.grid) first`);
     let x = new Float32Array(frame.length);
     for (let i = 0; i < frame.length; i++) x[i] = frame[i] / 255;
-    let r = conv2dS2(x, 3, H, W, t["encoder.conv.0.weight"], t["encoder.conv.0.bias"], 16);
+    let r = conv2dS2(x, 3, fh, fw, t["encoder.conv.0.weight"], t["encoder.conv.0.bias"], 16);
     r = conv2dS2(r.out, 16, r.h, r.w, t["encoder.conv.2.weight"], t["encoder.conv.2.bias"], 32);
     r = conv2dS2(r.out, 32, r.h, r.w, t["encoder.conv.4.weight"], t["encoder.conv.4.bias"], 64);
     const z = linear(r.out, t["encoder.fc.weight"], t["encoder.fc.bias"], D, false);
@@ -118,7 +131,9 @@ export function loadModel(meta, buffer) {
     return out;
   };
   const threshold = meta.unknown_threshold ?? meta.unknown_factor * meta.median_one_step_error;
-  return { meta, encode, step, threshold };
+  // imagined maps (A, B): one threshold, or separate stay / merge thresholds under fog (multimap.explore)
+  const im = meta.imagined ?? {};
+  return { meta, encode, step, threshold, stay: im.stay ?? null, merge: im.merge ?? threshold, maxNodes: im.max_nodes ?? 60 };
 }
 
 // --- imagination: per-map codebook, snapping, imagined graph, D(c) ------------------------
@@ -311,32 +326,59 @@ function bfsTo(next, targets) {            // steps from every node to the neare
   return D;
 }
 
-/** Nodes reachable in imagination from the anchors (anchors first). */
-export function growMap(model, anchors, threshold, maxNodes = 60) {
+const dist = (a, b) => { let s = 0; for (let j = 0; j < a.length; j++) { const d = a[j] - b[j]; s += d * d; } return Math.sqrt(s); };
+
+/** Nearest node other than `skip`. */
+function snapOther(z, codebook, skip) {
+  let best = Infinity, idx = -1;
+  for (let i = 0; i < codebook.length; i++) {
+    if (i === skip) continue;
+    const d = dist(z, codebook[i]);
+    if (d < best) { best = d; idx = i; }
+  }
+  return { index: idx, distance: best };
+}
+
+/** Nodes reachable in imagination from the anchors (anchors first). Mirrors multimap.explore.grow:
+ *  stay === null: a prediction within `merge` of any node is that node (or a blocked move);
+ *  otherwise blocked if within `stay` of its own node, else that node if within `merge` of another one. */
+export function growMap(model, anchors, stay, merge, maxNodes = 60) {
   const nodes = [...anchors];
   let frontier = nodes.map((_, i) => i), overflow = false;
   while (frontier.length) {
-    const preds = [];
-    for (const u of frontier) for (let a = 0; a < ACTIONS.length; a++) preds.push(model.step(nodes[u], a));
-    const nxt = [];
-    for (const p of preds) {
-      if (snap(p, nodes).distance <= threshold) continue;      // an existing node, or a blocked move
-      if (nodes.length >= maxNodes) { overflow = true; continue; }
-      nodes.push(p);
-      nxt.push(nodes.length - 1);
+    const old = nodes.length, far = [], existing = nodes.slice();
+    for (const u of frontier) for (let a = 0; a < ACTIONS.length; a++) {
+      const p = model.step(nodes[u], a);
+      if (stay === null) { if (snap(p, existing).distance > merge) far.push(p); continue; }
+      if (dist(p, nodes[u]) <= stay) continue;                    // a blocked move
+      if (snapOther(p, existing, u).distance > merge) far.push(p);
     }
-    frontier = nxt;
+    const added = [];
+    for (const p of far) {                                       // in order, so new nodes can merge
+      if (added.length && snap(p, added).distance <= merge) continue;
+      if (old + added.length >= maxNodes) { overflow = true; continue; }
+      added.push(p);
+    }
+    nodes.push(...added);
+    frontier = added.map((_, i) => old + i);
   }
   return { nodes, overflow };
 }
 
-function graphOf(model, codebook, threshold) {
+function graphOf(model, codebook, stay, merge) {
   const next = [], known = [];
   codebook.forEach((z, i) => {
     const row = [], kr = [];
     for (let a = 0; a < ACTIONS.length; a++) {
-      const s = snap(model.step(z, a), codebook);
-      kr.push(s.distance <= threshold); row.push(s.distance <= threshold ? s.index : i);
+      const p = model.step(z, a);
+      if (stay === null) {
+        const s = snap(p, codebook);
+        kr.push(s.distance <= merge); row.push(s.distance <= merge ? s.index : i);
+      } else if (dist(p, z) <= stay) { kr.push(true); row.push(i); }          // blocked
+      else {
+        const s = snapOther(p, codebook, i);
+        kr.push(s.distance <= merge); row.push(s.distance <= merge ? s.index : i);
+      }
     }
     next.push(row); known.push(kr);
   });
@@ -345,9 +387,8 @@ function graphOf(model, codebook, threshold) {
 
 /** The imagined map: codebook = grown nodes, graph, D, frontier distances, experience applied. */
 export function imaginedMap(model, anchors, goal, experienced = new Map(), explore = false) {
-  const thr = model.threshold;
-  const { nodes, overflow } = growMap(model, anchors, thr);
-  const g = graphOf(model, nodes, thr);
+  const { nodes, overflow } = growMap(model, anchors, model.stay, model.merge, model.maxNodes);
+  const g = graphOf(model, nodes, model.stay, model.merge);
   for (const [k, v] of experienced) { const u = Math.floor(k / 4), a = k % 4; g.next[u][a] = v; g.known[u][a] = true; }
   const D = bfsTo(g.next, [goal]);
   const frontier = [];
@@ -360,7 +401,7 @@ export function imaginedMap(model, anchors, goal, experienced = new Map(), explo
 export function matchCells(model, walls, map, cellLatents) {
   const cells = freeCells(walls);
   const lat = cellLatents || cells.map((c) => model.encode(render(walls, c)));
-  const cellOf = map.codebook.map((z) => { const s = snap(z, lat); return s.distance <= model.threshold ? s.index : -1; });
+  const cellOf = map.codebook.map((z) => { const s = snap(z, lat); return s.distance <= model.merge ? s.index : -1; });
   return { cells, lat, cellOf };
 }
 
@@ -397,7 +438,8 @@ export function planGraph(map, node, zGoal, visits, rng, model) {
   const min = Math.min(...cand.map((c) => c.cost));
   const ties = cand.map((c, i) => (c.cost === min ? i : -1)).filter((i) => i >= 0);
   const pick = cand[ties.length === 1 ? ties[0] : ties[Math.floor(rng() * ties.length)]];
-  return { action: pick.seq[0], sequence: pick.seq, entries: pick.entries, cost: pick.cost, how };
+  const futures = cand.map((c) => ({ seq: c.seq, entries: c.entries, cost: c.cost }));   // every imagined sequence (for display)
+  return { action: pick.seq[0], sequence: pick.seq, entries: pick.entries, cost: pick.cost, how, futures };
 }
 
 /** MPC loop without privileged pictures. mode: "imagine" (A) or "explore" (B). Yields after every action. */
@@ -416,7 +458,7 @@ export function* runImagined(model, walls, start, seed = 0, mode = "imagine") {
   const cellVisits = new Map([[key(...start), 1]]);
   let pos = start, collisions = 0, rebuilds = 0;
   const path = [pos];
-  yield { t: 0, pos, map, anchors: anchors.length, path: [...path], done: false, initial: true };
+  yield { t: 0, pos, map, node, anchors: anchors.length, path: [...path], done: false, initial: true };
   for (let t = 0; t < maxActions; t++) {
     const planMap = map;
     const plan = planGraph(map, node, zGoal, visits, rng, model);
@@ -442,7 +484,7 @@ export function* runImagined(model, walls, start, seed = 0, mode = "imagine") {
     const atGoal = pos[0] === GOAL[0] && pos[1] === GOAL[1];
     const loop = !atGoal && cellVisits.get(k) >= maxVisits;
     const done = atGoal || loop || t === maxActions - 1;
-    yield { t: t + 1, pos, plan, planMap, map, anchors: anchors.length, collision: r.collision, collisions, rebuilt, rebuilds,
+    yield { t: t + 1, pos, plan, planMap, map, node, anchors: anchors.length, collision: r.collision, collisions, rebuilt, rebuilds,
             path: [...path], done, outcome: atGoal ? "goal" : loop ? "loop" : done ? "timeout" : null };
     if (done) return;
   }

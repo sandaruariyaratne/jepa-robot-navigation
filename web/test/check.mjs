@@ -1,12 +1,13 @@
 // Check the JavaScript port against PyTorch: node web/test/check.mjs [--bench]
 // Exact: frames, imagined graph, D(c). Close: latents, P2 first-plan costs.
-// --bench also runs the JS planner on 200 maze maps and 100 new maps and compares
-// the success rate with the Python evaluation.
+// --bench also runs the JS planner (picture of every cell) on the benchmark maps of each model
+// and compares the success rate with the Python evaluation.
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { buildWorld, freeCells, key, loadModel, render, runToEnd, trueDistances, GOAL } from "../js/core.js";
+import * as C from "../js/core.js";
+import { buildWorld, freeCells, imaginedMap, key, loadModel, render, runToEnd, setGrid, trueDistances } from "../js/core.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const web = join(here, "..");
@@ -14,6 +15,7 @@ const vec = JSON.parse(readFileSync(join(here, "vectors.json"), "utf8"));
 const load = (k) => {
   const meta = JSON.parse(readFileSync(join(web, "models", `${k}.json`), "utf8"));
   const buf = readFileSync(join(web, "models", `${k}.bin`));
+  setGrid(meta.grid);                                   // 6 x 5, or 10 x 10 with fog
   return loadModel(meta, buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength));
 };
 const wallSet = (walls) => new Set(walls.map(([x, y]) => key(x, y)));
@@ -54,23 +56,32 @@ for (const [mk, layouts] of Object.entries(vec.models)) {
       check((plan.note === "fallback") === p.note.startsWith("fallback"), `${mk}/${name}: fallback at ${p.start}`);
     }
     check(maxDc < 1e-3, `${mk}/${name}: P2 costs differ by ${maxDc}`);
-    console.log(`${mk.padEnd(4)} ${name.padEnd(10)} latents max |diff| ${maxDz.toExponential(1)}, P2 costs ${maxDc.toExponential(1)}`);
+    // the map imagined from the start and goal pictures (A / B before the first move)
+    const im = v.imagined;
+    const m = imaginedMap(model, [model.encode(render(walls, im.start)), model.encode(render(walls, C.GOAL))], 1);
+    check(m.next.length === im.nodes, `${mk}/${name}: imagined nodes ${m.next.length} vs ${im.nodes}`);
+    check(JSON.stringify(m.next) === JSON.stringify(im.next), `${mk}/${name}: imagined map edges`);
+    check(JSON.stringify(m.known) === JSON.stringify(im.known), `${mk}/${name}: imagined map flags`);
+    check(JSON.stringify(m.D) === JSON.stringify(im.d), `${mk}/${name}: imagined map D`);
+    console.log(`${mk.padEnd(4)} ${name.padEnd(10)} latents max |diff| ${maxDz.toExponential(1)}, P2 costs ${maxDc.toExponential(1)}, `
+      + `imagined map ${m.next.length} nodes`);
   }
 }
 
 if (process.argv.includes("--bench")) {
   const bench = JSON.parse(readFileSync(join(here, "bench_maps.json"), "utf8"));
+  const limit = +(process.argv[process.argv.indexOf("--bench") + 1]) || Infinity;   // --bench [maps per set]
   for (const mk of Object.keys(vec.models)) {
     const model = load(mk);
-    for (const [set, maps] of Object.entries(bench)) {
+    for (const [set, maps] of Object.entries(bench[mk])) {
       let n = 0, ok = 0, opt = 0;
       const t0 = Date.now();
-      for (const w of maps) {
-        const walls = wallSet(w);
+      for (const entry of maps.slice(0, limit)) {
+        const walls = wallSet(entry.walls ?? entry);
         const world = buildWorld(model, walls);
         const dt = trueDistances(walls);
-        for (const c of freeCells(walls)) {
-          if (c[0] === GOAL[0] && c[1] === GOAL[1]) continue;
+        for (const c of entry.starts ?? freeCells(walls)) {           // fog sets: the test runs' start cells
+          if (c[0] === C.GOAL[0] && c[1] === C.GOAL[1]) continue;
           for (const seed of [0, 1]) {
             const r = runToEnd(world, c, seed);
             n++;
@@ -78,7 +89,7 @@ if (process.argv.includes("--bench")) {
           }
         }
       }
-      console.log(`bench ${mk} ${set}: success ${(100 * ok / n).toFixed(1)}%, shortest path ${(100 * opt / n).toFixed(1)}% `
+      console.log(`bench ${mk} ${set} (${Math.min(maps.length, limit)} maps): success ${(100 * ok / n).toFixed(1)}%, shortest path ${(100 * opt / n).toFixed(1)}% `
         + `(${n} episodes, ${((Date.now() - t0) / 1000).toFixed(0)}s)`);
     }
   }

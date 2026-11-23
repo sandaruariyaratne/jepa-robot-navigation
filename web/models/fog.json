@@ -1,0 +1,192 @@
+{
+ "key": "fog",
+ "label": "Joint JEPA, 10 x 10, fog of war",
+ "latent_dim": 64,
+ "hidden": [
+  256,
+  256
+ ],
+ "n_actions": 4,
+ "median_one_step_error": 2.0196282863616943,
+ "unknown_factor": 3.0,
+ "default_threshold": 6.058884859085083,
+ "unknown_threshold": 6.92564058303833,
+ "unknown_rule": "99.9% quantile of correct one-step snap distances, validation maps",
+ "grid": {
+  "cols": 10,
+  "rows": 10,
+  "goal": [
+   9,
+   0
+  ],
+  "view_radius": 1
+ },
+ "imagined": {
+  "max_nodes": 250,
+  "stay": 3.534767568111418,
+  "merge": 4.472933154106141,
+  "rule": "stay: 99% quantile of |pred - own cell| (blocked moves); merge: 1% quantile of |pred - nearest wrong cell| (real moves); validation split of the training maps"
+ },
+ "planning": {
+  "horizon": 3,
+  "max_actions": 300,
+  "max_visits": 1000000,
+  "revisit_penalty": 0.5,
+  "snap_each_step": true
+ },
+ "trained_on": {
+  "maps": 70,
+  "walls": [
+   10,
+   25
+  ],
+  "goal": [
+   9,
+   0
+  ]
+ },
+ "tensors": [
+  {
+   "name": "encoder.z_mean",
+   "shape": [
+    64
+   ],
+   "offset": 0,
+   "size": 64
+  },
+  {
+   "name": "encoder.z_std",
+   "shape": [
+    64
+   ],
+   "offset": 64,
+   "size": 64
+  },
+  {
+   "name": "encoder.conv.0.weight",
+   "shape": [
+    16,
+    3,
+    3,
+    3
+   ],
+   "offset": 128,
+   "size": 432
+  },
+  {
+   "name": "encoder.conv.0.bias",
+   "shape": [
+    16
+   ],
+   "offset": 560,
+   "size": 16
+  },
+  {
+   "name": "encoder.conv.2.weight",
+   "shape": [
+    32,
+    16,
+    3,
+    3
+   ],
+   "offset": 576,
+   "size": 4608
+  },
+  {
+   "name": "encoder.conv.2.bias",
+   "shape": [
+    32
+   ],
+   "offset": 5184,
+   "size": 32
+  },
+  {
+   "name": "encoder.conv.4.weight",
+   "shape": [
+    64,
+    32,
+    3,
+    3
+   ],
+   "offset": 5216,
+   "size": 18432
+  },
+  {
+   "name": "encoder.conv.4.bias",
+   "shape": [
+    64
+   ],
+   "offset": 23648,
+   "size": 64
+  },
+  {
+   "name": "encoder.fc.weight",
+   "shape": [
+    64,
+    6400
+   ],
+   "offset": 23712,
+   "size": 409600
+  },
+  {
+   "name": "encoder.fc.bias",
+   "shape": [
+    64
+   ],
+   "offset": 433312,
+   "size": 64
+  },
+  {
+   "name": "predictor.f.0.weight",
+   "shape": [
+    256,
+    68
+   ],
+   "offset": 433376,
+   "size": 17408
+  },
+  {
+   "name": "predictor.f.0.bias",
+   "shape": [
+    256
+   ],
+   "offset": 450784,
+   "size": 256
+  },
+  {
+   "name": "predictor.f.2.weight",
+   "shape": [
+    256,
+    256
+   ],
+   "offset": 451040,
+   "size": 65536
+  },
+  {
+   "name": "predictor.f.2.bias",
+   "shape": [
+    256
+   ],
+   "offset": 516576,
+   "size": 256
+  },
+  {
+   "name": "predictor.f.4.weight",
+   "shape": [
+    64,
+    256
+   ],
+   "offset": 516832,
+   "size": 16384
+  },
+  {
+   "name": "predictor.f.4.bias",
+   "shape": [
+    64
+   ],
+   "offset": 533216,
+   "size": 64
+  }
+ ],
+ "floats": 533280
+}

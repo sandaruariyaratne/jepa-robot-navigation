@@ -110,14 +110,16 @@ the counts are identical to one process. Findings: [REPORT.md §12](REPORT.md#12
 [web/](web/) runs the trained multi-map models in the browser: drag walls to build a map,
 and the robot plans with the joint JEPA from the rendered pixels. A switch chooses what it gets:
 a picture of every cell, only the start and goal pictures (imagination only), or those
-plus what it sees while walking (imagine + explore), as in REPORT.md §11. Plain JavaScript,
-no build step and no server (about 1 MB of weights).
+plus what it sees while walking (imagine + explore), as in REPORT.md §11. A second switch picks the
+world: the 6 × 5 grid, or the 10 × 10 fog-of-war grid with its own model (REPORT.md §12). Plain
+JavaScript, no build step and no server (about 3 MB of weights for both models).
 
 ```
 .venv/bin/python web/export_models.py          # weights + test vectors from the checkpoints
 node web/test/check.mjs                        # JS port vs PyTorch: frames, graph, D(c) exact
-node web/test/check.mjs --bench                # JS planner on 300 test maps vs the Python numbers
+node web/test/check.mjs --bench                # JS planner on the benchmark maps vs the Python numbers
 node web/test/explore_bench.mjs maze_maps 50    # JS imagination-only / explore modes vs multimap.explore
+node web/test/explore_bench.mjs fog_maps 20     # the same on the fog-of-war test maps (their start cells)
 cd web && python -m http.server 8765           # open http://127.0.0.1:8765
 ```
 
