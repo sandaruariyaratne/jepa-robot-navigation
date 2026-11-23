@@ -126,19 +126,39 @@ class P1:
                     extra={"first_action_costs": _per_first_action(seqs[:, 0], cost, a), "imagined": paths[i]})
 
 
+def snapped_rollout(model, z: torch.Tensor, seqs: torch.Tensor) -> torch.Tensor:
+    """Imagine every sequence, continuing each step from the codebook entry the last prediction snapped to.
+
+    Returns the raw one-step predictions [S, H, D]; snapping them gives the same entries and unknown flags
+    as walking the imagined graph (build_graph), because every prediction starts from an exact codebook
+    latent. Drift cannot accumulate, so the unknown threshold only ever judges one-step predictions.
+    """
+    states = z.expand(len(seqs), -1) if z.ndim == 1 else z
+    out = []
+    for k in range(seqs.shape[1]):
+        nxt = model.step(states, seqs[:, k])
+        out.append(nxt)
+        states = model.codebook[model.snap(nxt).index]
+    return torch.stack(out, dim=1)
+
+
 class P2:
-    """Exhaustive 3-step search scored with the imagined steps-to-goal table D(c)."""
+    """Exhaustive 3-step search scored with the imagined steps-to-goal table D(c).
 
-    name = "P2"
+    snap_each_step=False (the default, as evaluated in steps 8-12): each sequence is rolled out on the raw
+    latents. True: every imagined step is snapped to the codebook before the next one (snapped_rollout).
+    """
 
-    def __init__(self, horizon: int = 3) -> None:
+    def __init__(self, horizon: int = 3, snap_each_step: bool = False) -> None:
         self.horizon = horizon
+        self.snap_each_step = snap_each_step
+        self.name = "P2s" if snap_each_step else "P2"
 
     def plan(self, model, z: torch.Tensor, ctx: PlanContext) -> Plan:
         if ctx.d_table is None:
             raise ValueError("P2 needs the D(c) table")
         seqs = all_action_sequences(self.horizon, model.n_actions)
-        traj = model.imagine(z, seqs)  # [S, H, D]
+        traj = snapped_rollout(model, z, seqs) if self.snap_each_step else model.imagine(z, seqs)  # [S, H, D]
         s = model.snap(traj)
         known = torch.cumprod(s.known.long(), dim=-1).bool().numpy()  # after an unknown step, stop trusting
         d = np.asarray(ctx.d_table)[s.index.numpy()]

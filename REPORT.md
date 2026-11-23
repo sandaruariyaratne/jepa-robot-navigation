@@ -17,7 +17,14 @@ alternative shortest routes to avoid them.
 
 **Step 12.** Joint JEPA training alone does not change this on one map (§7).
 Trained on 70 layouts, though, it generalizes to unseen ones: 99.9% navigation
-success on 500 new layouts, against 36% for the v1 recipe (§8).
+success on 500 new layouts, against 36% for the v1 recipe (§8). Planning on the
+learned graph (every imagined step snapped to the map's codebook, one threshold
+chosen on fresh validation maps) brings all 1,200 stress-test layouts, mazes
+included, to 100% success by shortest paths (§9). Across seeds and against an
+end-to-end pixel world model with the same architecture and data, the JEPA
+objective is what makes this work: the pixel model ties it on the validation
+metric but solves 79% of mazes, and removing the variance / covariance terms
+collapses the latent (§10).
 
 ## 1. Setup
 
@@ -282,38 +289,119 @@ jobs: one-step edges want it high, unsnapped multi-step rollouts want it low.
 The default stays 3 × median; the calibrated value is only used with
 `--threshold calibrated`. The standard fix is not a second threshold but to
 snap every imagined step and continue from the codebook entry (planning on the
-learned graph), so only the one-step check is needed.
-
-### What these results do not show
-
-- **That JEPA specifically is needed.** The baseline is a frozen reconstruction
-  encoder. An encoder trained end to end with the predictor under a
-  reconstruction loss has not been tried; neither have ablations of the EMA
-  target or the variance / covariance terms.
-- **Robustness across seeds.** One training seed per model.
-- **Other conditions.** Same grid size, fixed goal, deterministic dynamics,
-  noise-free frames; every test layout comes from the same kind of generator.
-- **A good long-horizon model.** Rollouts drift (69% correct at 10 steps on new
-  maps); navigation works because the planner looks 3 steps ahead and snaps
-  to a per-map codebook.
-- **Planning without privileged frames.** Each new map's codebook is built
-  from one frame of the robot on every free cell (v1 gets the same). A real
-  agent would have to explore to collect them.
+learned graph), so only the one-step check is needed. That is §9.
 
 Full tables: [results_multimap/](results_multimap/) and
 [results_multimap_jepa/](results_multimap_jepa/) (`results.md`, `new_maps.md`,
 `hard_maps.md`, `maze_maps.md`, `*_calibrated.md`).
 
-## 9. Next steps
+## 9. Planning on the learned graph
 
-1. **Plan on the learned graph**: snap each imagined step to the codebook and
-   continue from that entry, with the one-step threshold calibrated on the
-   validation maps; confirm on fresh validation mazes before re-running the
-   test sets once.
-2. **A fair baseline**: encoder and predictor trained end to end with a
-   reconstruction loss instead of the JEPA loss.
-3. **3–5 seeds** for both, and ablations of the EMA target and the variance /
-   covariance terms.
-4. Remaining step 12 items: random goals, a learned goal-distance head, moving
+The fix proposed above: P2 still scores 64 three-step action sequences, but
+every imagined step is snapped to the map's codebook and the next step starts
+from that codebook entry, not from the raw prediction (`P2(snap_each_step=True)`,
+`--planner snap`). Drift can no longer accumulate, the look-ahead is exactly a
+walk on the imagined graph, and the unknown threshold only has to judge
+one-step predictions, the job it was calibrated for.
+
+**Choosing the setting without touching the test sets.** Two fresh validation
+sets, generated with new seeds and excluded from every other set: 100 mazes
+(the most winding of 10,000) and 100 dense-wall maps (8–13 walls). JEPA, Full
+rung, success / shortest path:
+
+| Setting | 100 validation mazes | 100 validation dense maps |
+|---|---|---|
+| P2, threshold 4.25 (3 × median) | 92.4% / 92.3% | 98.2% / 97.7% |
+| Snapped P2, threshold 4.25 | 94.1% / 93.9% | 99.3% / 98.8% |
+| **Snapped P2, threshold 7.05 (calibrated)** | **100% / 100%** | **100% / 100%** |
+
+**Test sets, run once with the chosen setting** (the same 1,200 layouts as §8,
+every free start cell, two seeds):
+
+| Test set | Episodes | Before (§8, P2, 4.25) | Snapped P2, 7.05 |
+|---|---|---|---|
+| Like training (3–7 walls) | 24,146 | 99.9% / 99.8% | **100% / 100%** |
+| Dense walls (8–14) | 19,680 | 97.3% / 97.2% | **100% / 100%** |
+| Mazes (path up to 18) | 8,048 | 94.0% / 93.9% | **100% / 100%** |
+
+Every imagined graph is exact (D(c) correct on all 1,200 maps, no fake
+shortcuts), no correct normal move is flagged unknown, no wrong edge is
+trusted, and there are no loop failures. So the single calibrated threshold is
+enough once rollouts are snapped; the "two thresholds" problem of §8 came from
+scoring unsnapped multi-step rollouts.
+
+Files: `results_multimap_jepa/val_*.md` (selection) and
+`*_calibrated_snap.md` (test).
+
+## 10. Fair baseline, seeds and ablations
+
+Is the JEPA objective doing the work, or would any encoder trained end to end
+with the predictor do as well? Four variants, identical data, 100-map split,
+encoder and predictor architecture, curriculum, steps and checkpoint selection
+(`python -m multimap.step3 train | eval | summary`):
+
+- **JEPA**: as in §8.
+- **Pixel world model** (the fair baseline): encoder, predictor and a decoder
+  trained together; the loss reconstructs each frame and decodes every
+  imagined step into the true next frame (robot pixels weighted × 10).
+- **No EMA target**: JEPA with the online encoder (stop-gradient) as target.
+- **No variance / covariance terms**: JEPA with those weights set to 0.
+
+Each is evaluated with both planners (P2 at 3 × median, and snapped P2 with its
+own validation-calibrated threshold) on the 15 test maps and the 200 mazes.
+Mean ± standard deviation over training seeds:
+
+| | JEPA | Pixel world model | No EMA | No var / cov |
+|---|---|---|---|---|
+| Seeds | 3 | 3 | 2 | 2 |
+| Val-map snap@5 (selection metric) | 90.1% ± 0.5 | 90.2% ± 1.1 | 91.1% ± 0.1 | 17.1% |
+| Robot cell from latent, linear probe | 100% | 100% | 100% | 15.6% |
+| Test maps: rollout accuracy, step 5 | 89.6% ± 0.2 | 89.5% ± 1.0 | 90.3% ± 0.8 | 16.7% |
+| Mazes: one-step, normal moves | **100%** | 97.6% ± 0.8 | 100% | 0.1% |
+| Mazes: wrong edges trusted (P2) | **0%** | 1.3% ± 0.5 | 0% | 54.5% |
+| Test maps: navigation, snapped P2 | **100% ± 0** | 96.8% ± 5.5 | 99.9% ± 0.2 | 7.8% |
+| Mazes: navigation, P2 | **95.2% ± 3.6** | 56.0% ± 5.7 | 83.8% ± 0.4 | 2.7% |
+| **Mazes: navigation, snapped P2** | **100% ± 0** | 79.4% ± 11.9 | 98.3% ± 1.0 | 2.6% |
+| Latent: smallest per-dimension std | 1.02 | 0.43 ± 0.04 | 1.01 | 0.00 |
+
+- **The JEPA result holds across seeds.** All three reach 100% on the mazes
+  with snapped P2. With unsnapped P2 they spread from 92% to 99%, which is
+  further evidence for planning on the graph.
+- **The pixel baseline ties on the selection metric and still navigates
+  worse.** It predicts ~2% of maze moves wrong and trusts about 1% of wrong
+  edges; in a corridor one trusted wrong edge breaks the route. Maze success
+  66%, 89% and 83% across seeds. Validation snap@5 does not predict
+  navigation: the two models tie on it and differ by 20 points on mazes.
+- **The EMA target helps modestly.** Predictions are as good, but navigation
+  is slightly worse, mainly with unsnapped P2 (84% vs 95% on mazes).
+- **The variance / covariance terms are essential.** Without them the encoder
+  collapses to near-constant latents and navigation is at random-walk level.
+
+Caveat: the pixel model trains on 128 windows per step instead of 512 (decoding
+every imagined step is ~4× more expensive per window), so part of its gap may
+come from seeing fewer windows rather than from the objective. It also took
+~3× longer to train (49–69 min vs ~17 min).
+
+Files: [results_step3/summary.md](results_step3/summary.md) and one JSON per
+run; checkpoints in `checkpoints_step3/`.
+
+## 11. What these results do not show
+
+- **Other conditions.** Same grid size, fixed goal, deterministic dynamics,
+  noise-free frames; every test layout comes from the same kind of generator.
+- **A good long-horizon model.** Raw rollouts drift (69% correct at 10 steps on
+  new maps); navigation is perfect because each imagined step is snapped to a
+  per-map codebook, i.e. the planner works on a learned graph.
+- **Planning without privileged frames.** Each new map's codebook is built
+  from one frame of the robot on every free cell (every baseline gets the
+  same). A real agent would have to explore to collect them.
+- **A fully matched baseline.** The pixel model saw a quarter as many windows
+  per step; ablations have 2 seeds, not 3–5.
+
+## 12. Next steps
+
+1. Pixel baseline at 512 windows per step, and a checkpoint metric based on
+   validation navigation rather than snap@5.
+2. Remaining step 12 items: random goals, a learned goal-distance head, moving
    obstacles, partial observability, stochastic dynamics; and building each new
    map's codebook by exploration.

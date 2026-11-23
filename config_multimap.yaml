@@ -83,3 +83,31 @@ multimap:
     maps_path: data_mazemaps/maps.json
     data_path: data_mazemaps/transitions.npz
     nav_seeds: [0, 1]
+
+  # Fresh validation layouts for choosing the planner / threshold (never used as test sets).
+  val_maze_maps:
+    title: validation mazes
+    n_maps: 100
+    select: longest_paths
+    pool: 10000
+    min_walls: 8
+    max_walls: 14
+    seed: 21
+    episodes_per_map: 20
+    steps_per_episode: 50
+    maps_path: data_valmaze/maps.json
+    data_path: data_valmaze/transitions.npz
+    nav_seeds: [0, 1]
+    exclude_sets: [new_maps, hard_maps, maze_maps]
+  val_hard_maps:
+    title: validation dense-wall maps
+    n_maps: 100
+    min_walls: 8
+    max_walls: 14
+    seed: 22
+    episodes_per_map: 20
+    steps_per_episode: 50
+    maps_path: data_valhard/maps.json
+    data_path: data_valhard/transitions.npz
+    nav_seeds: [0, 1]
+    exclude_sets: [new_maps, hard_maps, maze_maps, val_maze_maps]

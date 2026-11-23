@@ -1,0 +1,235 @@
+{
+ "variant": "pixel",
+ "seed": 2,
+ "label": "Pixel world model (baseline)",
+ "overrides": {
+  "objective": "pixel",
+  "windows_per_step": 128
+ },
+ "train": {
+  "best_step": 5400,
+  "best_val_snap": 0.8910869359970093,
+  "median_one_step_error": 1.529206395149231,
+  "probe_val_accuracy": 1.0,
+  "latent_geometry": {
+   "effective_rank": 46.64198684692383,
+   "min_dim_std": 0.4439842104911804,
+   "mean_dim_std": 0.578529953956604
+  },
+  "minutes": 49.21509639096669
+ },
+ "calibration": {
+  "threshold": 2.7852835655212402,
+  "rule": "99.9% quantile of correct one-step snap distances, validation maps",
+  "quantile": 0.999,
+  "default_threshold": 4.587619185447693,
+  "median_one_step_error": 1.529206395149231,
+  "val_maps": 15,
+  "windows": 14400,
+  "steps": [
+   {
+    "step": 1,
+    "correct": 14367,
+    "wrong": 33,
+    "correct_rejected_default": 0.0,
+    "correct_rejected_calibrated": 0.0004872276745319134,
+    "wrong_trusted_default": 1.0,
+    "wrong_trusted_calibrated": 1.0
+   },
+   {
+    "step": 2,
+    "correct": 14046,
+    "wrong": 354,
+    "correct_rejected_default": 0.0,
+    "correct_rejected_calibrated": 0.06443115477716076,
+    "wrong_trusted_default": 1.0,
+    "wrong_trusted_calibrated": 0.6271186440677966
+   },
+   {
+    "step": 3,
+    "correct": 13662,
+    "wrong": 738,
+    "correct_rejected_default": 0.0010979358805445762,
+    "correct_rejected_calibrated": 0.28560972039232907,
+    "wrong_trusted_default": 1.0,
+    "wrong_trusted_calibrated": 0.3997289972899729
+   }
+  ]
+ },
+ "test15": {
+  "prediction": {
+   "one_step": {
+    "normal moves": {
+     "correct": 10284,
+     "total": 10354
+    },
+    "border bumps": {
+     "correct": 2637,
+     "total": 2637
+    },
+    "wall bumps": {
+     "correct": 2009,
+     "total": 2009
+    },
+    "all": {
+     "correct": 14930,
+     "total": 15000
+    }
+   },
+   "mse_model": 0.03694227337837219,
+   "mse_persistence": 0.11711914092302322,
+   "rollout": [
+    0.9954471588134766,
+    0.9772357940673828,
+    0.9534959197044373,
+    0.9225203394889832,
+    0.8869105577468872,
+    0.8453658819198608,
+    0.8060162663459778,
+    0.764390230178833,
+    0.7213008403778076,
+    0.6763414740562439
+   ],
+   "rollout_windows": 12300
+  },
+  "collision": {
+   "accuracy": 0.9953333333333333,
+   "transitions": 15000,
+   "blocked_predicted_blocked": {
+    "correct": 4646,
+    "total": 4646
+   },
+   "wall_bumps_predicted_blocked": {
+    "correct": 2009,
+    "total": 2009
+   },
+   "border_bumps_predicted_blocked": {
+    "correct": 2637,
+    "total": 2637
+   },
+   "free_moves_predicted_blocked": {
+    "wrong": 70,
+    "total": 10354
+   },
+   "precision": 0.9851569126378287
+  },
+  "p2": {
+   "threshold": 4.587619185447693,
+   "episodes": 714,
+   "success": 686,
+   "optimal": 663,
+   "edges": {
+    "total": 1488,
+    "correct": 1481,
+    "unknown": 0,
+    "wrong_known": 7
+   },
+   "d_exact": 365,
+   "d_cells": 372,
+   "d_under": 0
+  },
+  "snap": {
+   "threshold": 2.7852835655212402,
+   "episodes": 714,
+   "success": 713,
+   "optimal": 700,
+   "edges": {
+    "total": 1488,
+    "correct": 1478,
+    "unknown": 3,
+    "wrong_known": 7
+   },
+   "d_exact": 365,
+   "d_cells": 372,
+   "d_under": 0
+  }
+ },
+ "maze200": {
+  "prediction": {
+   "one_step": {
+    "normal moves": {
+     "correct": 107234,
+     "total": 108868
+    },
+    "border bumps": {
+     "correct": 40977,
+     "total": 40977
+    },
+    "wall bumps": {
+     "correct": 50095,
+     "total": 50155
+    },
+    "all": {
+     "correct": 198306,
+     "total": 200000
+    }
+   },
+   "mse_model": 0.0408779114484787,
+   "mse_persistence": 0.08774715811014175,
+   "rollout": [
+    0.9914939105510712,
+    0.9496890127658844,
+    0.8963780343532562,
+    0.8416524350643158,
+    0.7877134203910827,
+    0.7356768429279328,
+    0.689012199640274,
+    0.6456707239151,
+    0.6047195196151733,
+    0.5657926857471466
+   ],
+   "rollout_windows": 164000
+  },
+  "collision": {
+   "accuracy": 0.99153,
+   "transitions": 200000,
+   "blocked_predicted_blocked": {
+    "correct": 91072,
+    "total": 91132
+   },
+   "wall_bumps_predicted_blocked": {
+    "correct": 50095,
+    "total": 50155
+   },
+   "border_bumps_predicted_blocked": {
+    "correct": 40977,
+    "total": 40977
+   },
+   "free_moves_predicted_blocked": {
+    "wrong": 1634,
+    "total": 108868
+   },
+   "precision": 0.9823743878497616
+  },
+  "p2": {
+   "threshold": 4.587619185447693,
+   "episodes": 8048,
+   "success": 4669,
+   "optimal": 4444,
+   "edges": {
+    "total": 16896,
+    "correct": 16760,
+    "unknown": 0,
+    "wrong_known": 136
+   },
+   "d_exact": 3538,
+   "d_cells": 4224,
+   "d_under": 14
+  },
+  "snap": {
+   "threshold": 2.7852835655212402,
+   "episodes": 8048,
+   "success": 6669,
+   "optimal": 6596,
+   "edges": {
+    "total": 16896,
+    "correct": 16697,
+    "unknown": 127,
+    "wrong_known": 131
+   },
+   "d_exact": 3422,
+   "d_cells": 4224,
+   "d_under": 0
+  }
+ }
+}

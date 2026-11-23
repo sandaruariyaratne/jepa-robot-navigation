@@ -98,12 +98,13 @@ def graph_metrics(world: WorldModel, grid, goal_frame) -> dict:
             "goal_ok": bool(goal == int(cells.ids(np.array(grid.goal))))}
 
 
-def navigate(world, grid, goal_frame, cfg, seeds) -> dict[str, list]:
+def navigate(world, grid, goal_frame, cfg, seeds, labels=RUNGS) -> dict[str, list]:
     p = cfg["planning"]
-    rungs = {r.label: r for r in build_rungs(TrueModel(grid), world, goal_frame, p["p2"]["horizon"])}
+    rungs = {r.label: r for r in build_rungs(TrueModel(grid), world, goal_frame, p["p2"]["horizon"],
+                                             p["p2"].get("snap_each_step", False))}
     env = GridWorld(grid, terminate_on_goal=True)
     out = {}
-    for label in RUNGS:
+    for label in labels:
         r = rungs[label]
         planner = RandomPolicy() if label == "Random" else r.planner
         out[label] = [run_episode(env, r.model, planner, r.mctx, start,

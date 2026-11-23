@@ -209,3 +209,53 @@ def test_calibrated_threshold_is_the_validation_quantile_of_correct_one_step_sna
     ok = (cell[:, 0] == t["next_cell"][:, 0]).numpy()
     assert out["threshold"] == pytest.approx(float(np.quantile(dist[:, 0].numpy()[ok], 0.9)))
     assert out["default_threshold"] == pytest.approx(3 * 0.5) and [s["step"] for s in out["steps"]] == [1, 2]
+
+
+def test_snapped_rollout_walks_the_imagined_graph(maps):
+    from models import Encoder, Predictor
+    from planning.imagination import WorldModel, all_action_sequences
+    from planning.latent_graph import build_graph
+    from planning.planner import snapped_rollout
+
+    grid = maps[5]
+    torch.manual_seed(0)
+    enc, pred = Encoder(8).freeze(), Predictor(8, 4, [16], 0.5).eval()
+    r = GridWorld(grid).renderer
+    with torch.no_grad():
+        cb = enc(torch.as_tensor(np.stack([r.render(c) for c in grid.free_cells()])))
+    world = WorldModel(enc, pred, cb, median_one_step_error=0.2, unknown_factor=3.0)
+    g = build_graph(world)
+    seqs = all_action_sequences(3)
+    for start in (0, 7, len(cb) - 1):
+        with torch.no_grad():
+            s = world.snap(snapped_rollout(world, cb[start], seqs))
+        for i, seq in enumerate(seqs.tolist()):
+            c = start
+            for k, a in enumerate(seq):
+                assert int(s.index[i, k]) == g.predicted[c, a] and bool(s.known[i, k]) == g.known[c, a]
+                c = int(g.predicted[c, a])
+
+
+@pytest.mark.parametrize("over", [{"objective": "pixel", "windows_per_step": 8}, {"target": "online"},
+                                  {"var_weight": 0.0, "cov_weight": 0.0}])
+def test_step3_variants_train(small, over):
+    from multimap.train_jepa import train as train_jepa
+
+    sub, data = small
+    cfg = load_config(ROOT / "config_multimap_jepa.yaml")
+    cfg["multimap"]["jepa"].update({"latent_dim": 8, "hidden": [16], "steps": 4, "eval_every": 2, "maps_per_step": 2,
+                                    "windows_per_step": 16, "curriculum": [[1, 1], [3, 2]], **over})
+    cfg["probe"]["steps"] = 20
+    target, predictor, m = train_jepa(cfg, data, {"train": [0, 1], "val": [2], "test": []}, len(sub), verbose=False)
+    assert m["best_step"] in (2, 4) and np.isfinite(m["median_one_step_error"])
+    assert not any(p.requires_grad for p in [*target.parameters(), *predictor.parameters()])
+
+
+def test_bad_variant_is_rejected(small):
+    from multimap.train_jepa import train as train_jepa
+
+    sub, data = small
+    cfg = load_config(ROOT / "config_multimap_jepa.yaml")
+    cfg["multimap"]["jepa"]["objective"] = "contrastive"
+    with pytest.raises(ValueError):
+        train_jepa(cfg, data, {"train": [0, 1], "val": [2], "test": []}, len(sub), verbose=False)

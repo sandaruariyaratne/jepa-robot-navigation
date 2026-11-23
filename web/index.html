@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Mini-JEPA Robot</title>
+  <meta name="description" content="Draw a maze and watch a robot navigate it using a JEPA world model that learned from pixels. It has never seen your map. Runs entirely in your browser.">
+  <meta property="og:title" content="Mini-JEPA: a robot that plans in its imagination">
+  <meta property="og:description" content="Drag walls to build a maze it has never seen. A world model trained on 70 maps imagines what each move does and finds the way to the goal, live in your browser.">
+  <meta property="og:type" content="website">
+  <meta property="og:image" content="og.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><rect width='16' height='16' rx='3' fill='%23e3e9ef'/><rect x='3' y='3' width='10' height='10' rx='2' fill='%232a5ea8'/></svg>">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="top">
+    <div class="brand">
+      <span class="logo" aria-hidden="true"></span>
+      <span>Mini-JEPA</span>
+    </div>
+    <a class="gh" href="https://github.com/sandaruariyaratne/jepa-robot-navigation" target="_blank" rel="noopener">Code &amp; report ↗</a>
+  </header>
+
+  <main>
+    <section class="intro">
+      <h1>A robot that plans in its imagination</h1>
+      <p>Build any maze. The robot has never seen it. It looks at the 48×40-pixel picture, imagines what each
+        move would do with a <strong>JEPA world model</strong> trained on 70 other maps, and plans its way to the goal.</p>
+    </section>
+
+    <div class="layout">
+      <section class="card board-card" aria-label="Map editor">
+        <div class="board-wrap">
+          <div id="board" class="board" role="grid" aria-label="6 by 5 grid world"></div>
+        </div>
+
+        <div class="palette">
+          <button id="wallChip" class="chip wall-chip" type="button" aria-label="Drag a wall onto the grid">
+            <span class="chip-tile" aria-hidden="true"></span>Drag a wall
+          </button>
+          <p class="hint">Tap a cell to add or remove a wall · drag across cells to paint · drag the robot to move it</p>
+        </div>
+
+        <div class="controls">
+          <button id="run" class="btn primary" type="button">▶ Run</button>
+          <button id="step" class="btn" type="button">Step</button>
+          <button id="reset" class="btn" type="button">Reset</button>
+          <span class="sep" aria-hidden="true"></span>
+          <button id="random" class="btn ghost" type="button">Random map</button>
+          <button id="zigzag" class="btn ghost" type="button">Zig-zag</button>
+          <button id="maze" class="btn ghost" type="button">Hard maze</button>
+          <button id="clear" class="btn ghost" type="button">Clear</button>
+        </div>
+
+        <div class="row-opts">
+          <label class="toggle"><input id="showD" type="checkbox"> Show imagined steps-to-goal</label>
+          <label class="speed">Speed
+            <select id="speed">
+              <option value="650">Slow</option>
+              <option value="330" selected>Normal</option>
+              <option value="120">Fast</option>
+            </select>
+          </label>
+        </div>
+      </section>
+
+      <section class="card side" aria-label="Inside the robot">
+        <div id="status" class="status" role="status" aria-live="polite">Loading the model…</div>
+
+        <div class="eyes">
+          <canvas id="view" width="48" height="40" aria-label="What the robot sees"></canvas>
+          <div>
+            <div class="label">What it sees</div>
+            <p class="small">48×40 RGB pixels. No coordinates or map: this picture is its only input.</p>
+          </div>
+        </div>
+
+        <div class="block">
+          <div class="label">Its current plan <span class="small muted">(3 imagined moves, re-planned every step)</span></div>
+          <div id="plan" class="plan"><span class="muted small">Press Run or Step.</span></div>
+        </div>
+
+        <div class="block">
+          <div class="label">Imagination vs reality, this map</div>
+          <dl class="stats" id="stats"></dl>
+          <div id="wallNote" class="pill" hidden></div>
+        </div>
+      </section>
+    </div>
+
+    <section class="how">
+      <h2>How it works</h2>
+      <ol class="steps">
+        <li><b>See.</b> A small CNN encoder turns the 48×40 picture into a 64-number latent state.</li>
+        <li><b>Imagine.</b> A predictor guesses the next latent for each of the 4 moves, without touching the real world.
+          Doing this from every cell gives an imagined map of where every move leads.</li>
+        <li><b>Plan.</b> It tries all 64 three-move sequences in imagination and scores each by how close it gets to the goal on
+          that imagined map. Moves it isn't sure about are treated as walls.</li>
+        <li><b>Act.</b> It makes the first move, looks again, and re-plans.</li>
+      </ol>
+      <p class="small"><b>Why JEPA.</b> The encoder is trained together with the predictor, against a slowly updated copy of
+        itself, so that the latent space makes moves predictable rather than just redrawing the picture. On 1,200 maps it
+        never saw, it reaches the goal 99.9% / 97.3% / 94.0% of the time (normal maps / dense walls / mazes).</p>
+      <p class="small muted">Trained on 70 maps with 3–7 walls; the goal is always top-right. The model runs entirely in your
+        browser (about 1 MB of weights, no server). Built from the
+        <a href="https://github.com/sandaruariyaratne/jepa-robot-navigation" target="_blank" rel="noopener">project's</a>
+        PyTorch checkpoints and checked against them number for number.</p>
+    </section>
+  </main>
+
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>

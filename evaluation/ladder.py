@@ -34,10 +34,10 @@ class Rung:
     mctx: ModelContext
 
 
-def build_rungs(true_model, world, goal_frame, p2_horizon: int = 3) -> list[Rung]:
+def build_rungs(true_model, world, goal_frame, p2_horizon: int = 3, snap_each_step: bool = False) -> list[Rung]:
     true_ctx = prepare(true_model, goal_frame)
     learned_ctx = prepare(world, goal_frame)
-    p2 = P2(p2_horizon)
+    p2 = P2(p2_horizon, snap_each_step)
     return [
         Rung("Oracle", "true", "A*", true_model, Oracle(getattr(true_model, "map", None)), true_ctx),
         Rung("D1", "true", "true", true_model, p2, true_ctx),

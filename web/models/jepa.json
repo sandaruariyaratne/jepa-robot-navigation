@@ -1,0 +1,174 @@
+{
+ "key": "jepa",
+ "label": "Joint JEPA (v2)",
+ "latent_dim": 64,
+ "hidden": [
+  256,
+  256
+ ],
+ "n_actions": 4,
+ "median_one_step_error": 1.4151430130004883,
+ "unknown_factor": 3.0,
+ "unknown_threshold": 4.245429039001465,
+ "planning": {
+  "horizon": 3,
+  "max_actions": 30,
+  "max_visits": 3,
+  "revisit_penalty": 0.5
+ },
+ "trained_on": {
+  "maps": 70,
+  "walls": [
+   3,
+   7
+  ],
+  "goal": [
+   5,
+   0
+  ]
+ },
+ "tensors": [
+  {
+   "name": "encoder.z_mean",
+   "shape": [
+    64
+   ],
+   "offset": 0,
+   "size": 64
+  },
+  {
+   "name": "encoder.z_std",
+   "shape": [
+    64
+   ],
+   "offset": 64,
+   "size": 64
+  },
+  {
+   "name": "encoder.conv.0.weight",
+   "shape": [
+    16,
+    3,
+    3,
+    3
+   ],
+   "offset": 128,
+   "size": 432
+  },
+  {
+   "name": "encoder.conv.0.bias",
+   "shape": [
+    16
+   ],
+   "offset": 560,
+   "size": 16
+  },
+  {
+   "name": "encoder.conv.2.weight",
+   "shape": [
+    32,
+    16,
+    3,
+    3
+   ],
+   "offset": 576,
+   "size": 4608
+  },
+  {
+   "name": "encoder.conv.2.bias",
+   "shape": [
+    32
+   ],
+   "offset": 5184,
+   "size": 32
+  },
+  {
+   "name": "encoder.conv.4.weight",
+   "shape": [
+    64,
+    32,
+    3,
+    3
+   ],
+   "offset": 5216,
+   "size": 18432
+  },
+  {
+   "name": "encoder.conv.4.bias",
+   "shape": [
+    64
+   ],
+   "offset": 23648,
+   "size": 64
+  },
+  {
+   "name": "encoder.fc.weight",
+   "shape": [
+    64,
+    1920
+   ],
+   "offset": 23712,
+   "size": 122880
+  },
+  {
+   "name": "encoder.fc.bias",
+   "shape": [
+    64
+   ],
+   "offset": 146592,
+   "size": 64
+  },
+  {
+   "name": "predictor.f.0.weight",
+   "shape": [
+    256,
+    68
+   ],
+   "offset": 146656,
+   "size": 17408
+  },
+  {
+   "name": "predictor.f.0.bias",
+   "shape": [
+    256
+   ],
+   "offset": 164064,
+   "size": 256
+  },
+  {
+   "name": "predictor.f.2.weight",
+   "shape": [
+    256,
+    256
+   ],
+   "offset": 164320,
+   "size": 65536
+  },
+  {
+   "name": "predictor.f.2.bias",
+   "shape": [
+    256
+   ],
+   "offset": 229856,
+   "size": 256
+  },
+  {
+   "name": "predictor.f.4.weight",
+   "shape": [
+    64,
+    256
+   ],
+   "offset": 230112,
+   "size": 16384
+  },
+  {
+   "name": "predictor.f.4.bias",
+   "shape": [
+    64
+   ],
+   "offset": 246496,
+   "size": 64
+  }
+ ],
+ "floats": 246560
+}

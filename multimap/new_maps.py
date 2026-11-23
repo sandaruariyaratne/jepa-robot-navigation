@@ -86,6 +86,8 @@ def new_maps_and_data(cfg: dict, key: str = "new_maps"):
     else:
         lo, hi = nm.get("min_walls", mm["min_walls"]), nm.get("max_walls", mm["max_walls"])
         exclude = [m.walls for m in old]
+        for other in nm.get("exclude_sets", []):            # e.g. keep validation layouts out of every test set
+            exclude += [m.walls for m in load_maps(resolve(mm[other]["maps_path"]))[0]]
         if nm.get("select") == "longest_paths":
             pool = generate_maps(nm["pool"], nm["seed"], lo, hi, exclude=exclude, max_tries=50 * nm["pool"])
             order = np.argsort([-mean_distance(m) for m in pool], kind="stable")
@@ -97,6 +99,8 @@ def new_maps_and_data(cfg: dict, key: str = "new_maps"):
         data = collect(maps, nm["episodes_per_map"], nm["steps_per_episode"], nm["seed"], cfg["data"]["cell_px"])
         save_npz(data, data_path)
     assert not {m.walls for m in maps} & {m.walls for m in old}, "a new map repeats an experiment layout"
+    for other in nm.get("exclude_sets", []):
+        assert not {m.walls for m in maps} & {m.walls for m in load_maps(resolve(mm[other]["maps_path"]))[0]}, other
     return maps, data, old
 
 
@@ -152,7 +156,8 @@ def render(res: dict, label: str) -> str:
          + (f" Average shortest path to the goal {res['mean_distance']:.1f} steps, longest {res['longest_path']}."
             if "mean_distance" in res else "")
          + (f" Unknown threshold {res['unknown_threshold']['threshold']:.2f} ({res['unknown_threshold']['rule']})."
-            if "unknown_threshold" in res else "") + "\n",
+            if "unknown_threshold" in res else "")
+         + (" Planner: P2 with every imagined step snapped to the codebook." if res.get("planner") == "snap" else "") + "\n",
          "## Headline\n", "| metric | result |", "|---|---|"]
     f = res["navigation"]["Full"]
     c = res["collision"]
@@ -221,8 +226,11 @@ def main() -> None:
     parser.add_argument("--set", default="new_maps", help="test set under `multimap:` (new_maps, hard_maps, maze_maps)")
     parser.add_argument("--threshold", choices=["default", "calibrated"], default="default",
                         help="unknown threshold: 3 x median one-step error, or calibrated on the validation maps")
+    parser.add_argument("--planner", choices=["p2", "snap"], default="p2",
+                        help="p2: roll out raw latents (as in steps 8-12); snap: snap every imagined step")
     args = parser.parse_args()
     cfg = load_config(args.config)
+    cfg["planning"]["p2"]["snap_each_step"] = args.planner == "snap"
     mm, nm = cfg["multimap"], cfg["multimap"][args.set]
     label = mm.get("label", "v1 model")
 
@@ -247,11 +255,11 @@ def main() -> None:
         cal = load_threshold(cfg)
         thr = {"kind": "calibrated", "threshold": cal["threshold"], "rule": cal["rule"]}
         median_err, factor = cal["threshold"], 1.0          # WorldModel: threshold = factor x median_err
-    name = args.set + ("_calibrated" if args.threshold == "calibrated" else "")
+    name = args.set + ("_calibrated" if args.threshold == "calibrated" else "") + ("_snap" if args.planner == "snap" else "")
     print(f"Unknown threshold {thr['threshold']:.3f} ({thr['rule']})", flush=True)
 
     dist = [mean_distance(m) for m in maps]
-    res = {"label": label, "set": args.set, "unknown_threshold": thr, "title": nm.get("title", "new maps"), "n_maps": len(maps),
+    res = {"label": label, "set": args.set, "unknown_threshold": thr, "planner": args.planner, "title": nm.get("title", "new maps"), "n_maps": len(maps),
            "seed": nm["seed"], "nav_seeds": nm["nav_seeds"],
            "mean_distance": float(np.mean(dist)), "longest_path": int(max(distances_to_goal(m).max() for m in maps)),
            "walls_min": min(len(m.walls) for m in maps), "walls_max": max(len(m.walls) for m in maps),

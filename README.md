@@ -69,12 +69,31 @@ Findings: [REPORT.md §7](REPORT.md#7-v2-experiment-1-joint-jepa-training).
 .venv/bin/python -m multimap.new_maps --set hard_maps --config config_multimap_jepa.yaml  # 500, 8-14 walls
 .venv/bin/python -m multimap.new_maps --set maze_maps --config config_multimap_jepa.yaml  # 200 mazes
 .venv/bin/python -m multimap.calibrate --config config_multimap_jepa.yaml    # unknown threshold from validation maps
+.venv/bin/python -m multimap.new_maps --set maze_maps --threshold calibrated --planner snap --config config_multimap_jepa.yaml
+.venv/bin/python -m multimap.step3 train && .venv/bin/python -m multimap.step3 eval && .venv/bin/python -m multimap.step3 summary
 ```
 
 100 random layouts split 70 / 15 / 15 by map; each map snaps to its own
 codebook. The stress tests load the trained models and never retrain; add
-`--threshold calibrated` to use the validation-calibrated unknown threshold.
-Findings: [REPORT.md §8](REPORT.md#8-multi-map-experiments-held-out-layouts).
+`--threshold calibrated` to use the validation-calibrated unknown threshold and
+`--planner snap` to snap every imagined step to the codebook (100% on all
+1,200 stress-test layouts). `multimap.step3` trains and compares JEPA, an
+end-to-end pixel world model and two ablations over several seeds
+(`results_step3/summary.md`; the pixel baseline takes ~1 h per seed).
+Findings: [REPORT.md §8–10](REPORT.md#8-multi-map-experiments-held-out-layouts).
+
+### Interactive web demo
+
+[web/](web/) runs the trained multi-map models in the browser: drag walls to build a map,
+and the robot plans with the joint JEPA from the rendered pixels. Plain JavaScript,
+no build step and no server (about 1 MB of weights).
+
+```
+.venv/bin/python web/export_models.py          # weights + test vectors from the checkpoints
+node web/test/check.mjs                        # JS port vs PyTorch: frames, graph, D(c) exact
+node web/test/check.mjs --bench                # JS planner on 300 test maps vs the Python numbers
+cd web && python -m http.server 8765           # open http://127.0.0.1:8765
+```
 
 ## Look at it
 
@@ -100,6 +119,7 @@ data/           collection, episode split + held-out pairs, datasets (single ste
 models/         numerical baseline, encoder, decoder, residual predictor
 training/       train_numerical, train_encoder (with gate), train_world_model, train_jepa (v2)
 evaluation/     linear probe, metrics, prediction accuracy, navigation, ladder, plots, `python -m evaluation`
+web/            browser demo: JS port of renderer, networks, imagined graph and P2 (checked against PyTorch)
 multimap/       many-layout experiment: maps, collection, v1 and JEPA training, evaluation, stress tests, calibration
 planning/       imagination (no simulator calls), latent graph + D(c), true-model wrapper, P0/P1/P2, MPC loop
 visualization/  replay dashboard

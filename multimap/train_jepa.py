@@ -28,13 +28,14 @@ from torch.nn import functional as F
 
 from config import load_config, resolve
 from evaluation.probes import probe_kwargs, probe_report
-from models import Encoder, Predictor
+from models import Decoder, Encoder, Predictor
+from training.train_encoder import recon_loss
 from training.train_jepa import effective_rank, ema_update, vicreg_terms
 from training.train_world_model import k_for_epoch
 
 from .collect import load
 from .maps import load_maps
-from .train import N_CELLS, cell_ids, codebooks, encode, frame_split, rollout_scores, windows
+from .train import N_CELLS, cell_ids, codebooks, encode, frame_split, map_backgrounds, rollout_scores, windows
 
 
 @torch.no_grad()
@@ -56,10 +57,23 @@ def train(cfg: dict, data: dict, splits: dict, n_maps: int, verbose: bool = True
     frames = torch.as_tensor(data["frames"])
     frames_of = {m: np.flatnonzero(data["frame_map"] == m) for m in range(n_maps)}
 
+    objective = j.get("objective", "jepa")      # jepa: predict target latents; pixel: predict frames via a decoder
+    target_kind = j.get("target", "ema")        # ema: slow copy of the online encoder; online: the online encoder, stop-grad
+    if objective not in ("jepa", "pixel") or target_kind not in ("ema", "online"):
+        raise ValueError(f"unknown objective / target: {objective} / {target_kind}")
     online = Encoder(j["latent_dim"])
     target = copy.deepcopy(online).requires_grad_(False)
     predictor = Predictor(j["latent_dim"], 4, j["hidden"], j["last_layer_init"])
-    opt = torch.optim.Adam([*online.parameters(), *predictor.parameters()], lr=j["lr"])
+    params = [*online.parameters(), *predictor.parameters()]
+    if objective == "pixel":
+        decoder = Decoder(j["latent_dim"])
+        params += list(decoder.parameters())
+        bgs = torch.as_tensor(map_backgrounds(data, n_maps))
+        fmap = torch.as_tensor(data["frame_map"])
+        rw = j.get("recon_robot_weight", 10.0)
+    opt = torch.optim.Adam(params, lr=j["lr"])
+    use_ema = objective == "jepa" and target_kind == "ema"
+    enc_eval = target if use_ema else online      # the encoder that is evaluated, selected and saved
 
     train_maps = list(splits["train"])
     ks = sorted({k for _, k in j["curriculum"]})
@@ -89,23 +103,39 @@ def train(cfg: dict, data: dict, splits: dict, n_maps: int, verbose: bool = True
         predictor.train()
         x = frames[torch.as_tensor(fids)]
         z = online(x)
-        with torch.no_grad():
-            z_tgt = target(x)
         pred = predictor.rollout(z[local[t["obs"][idx]]], t["action"][idx])
-        l_pred = F.mse_loss(pred, z_tgt[local[t["next"][idx]]])
-        l_var, l_cov = vicreg_terms(z)
-        loss = j["pred_weight"] * l_pred + j["var_weight"] * l_var + j["cov_weight"] * l_cov
+        if objective == "jepa":
+            if use_ema:
+                with torch.no_grad():
+                    z_tgt = target(x)
+            else:
+                z_tgt = z.detach()
+            l_pred = F.mse_loss(pred, z_tgt[local[t["next"][idx]]])
+            l_var, l_cov = vicreg_terms(z)
+            loss = j["pred_weight"] * l_pred + j["var_weight"] * l_var + j["cov_weight"] * l_cov
+        else:
+            # generative baseline: reconstruct the frames and decode every imagined step into the next frame
+            gids = torch.as_tensor(fids)
+            l_rec = recon_loss(decoder(z), x.float() / 255.0, (x != bgs[fmap[gids]]).any(1, keepdim=True), rw)
+            nxt = t["next"][idx].reshape(-1)
+            xn = frames[nxt]
+            l_pred = recon_loss(decoder(pred.reshape(-1, pred.shape[-1])), xn.float() / 255.0,
+                                (xn != bgs[fmap[nxt]]).any(1, keepdim=True), rw)
+            with torch.no_grad():
+                l_var, l_cov = vicreg_terms(z)          # logged only
+            loss = l_rec + j["pred_weight"] * l_pred
         opt.zero_grad()
         loss.backward()
         opt.step()
-        ema_update(target, online, j["ema_tau"])
+        if use_ema:
+            ema_update(target, online, j["ema_tau"])
         for name, v in (("loss", loss), ("pred", l_pred), ("var", l_var), ("cov", l_cov)):
             tot[name] += v.item()
 
         if step % j["eval_every"] == 0 or step == j["steps"]:
             n = j["eval_every"] if step % j["eval_every"] == 0 else step % j["eval_every"]
             predictor.eval()
-            table = full_table(target, frames)
+            table = full_table(enc_eval, frames)
             cb, mask = codebooks(table, data, n_maps)
             acc, mse, _ = rollout_scores(predictor, table, val_sel, cb, mask)
             acc1, _, _ = rollout_scores(predictor, table, val_one, cb, mask)
@@ -114,7 +144,7 @@ def train(cfg: dict, data: dict, splits: dict, n_maps: int, verbose: bool = True
             history.append(row)
             key = (row[f"val_snap_{h}"], row[f"val_mse_{h}"])
             if key[0] > best["key"][0] or (key[0] == best["key"][0] and key[1] < best["key"][1]):
-                best = {"key": key, "step": step, "target": copy.deepcopy(target.state_dict()),
+                best = {"key": key, "step": step, "target": copy.deepcopy(enc_eval.state_dict()),
                         "predictor": copy.deepcopy(predictor.state_dict())}
             if verbose:
                 print(f"  step {step:5d}  K={k}  pred {row['train_pred']:.4f}  var {row['train_var']:.3f}  "
@@ -122,7 +152,7 @@ def train(cfg: dict, data: dict, splits: dict, n_maps: int, verbose: bool = True
                       f"({time.perf_counter() - t0:.0f}s)", flush=True)
             tot = dict.fromkeys(tot, 0.0)
 
-    target.load_state_dict(best["target"])
+    target.load_state_dict(best["target"])         # always returned as `target`, whichever encoder it came from
     predictor.load_state_dict(best["predictor"])
     target.freeze()
     predictor.requires_grad_(False).eval()
