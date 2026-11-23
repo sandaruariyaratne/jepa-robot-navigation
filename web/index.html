@@ -1,8 +1,9 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="light">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
   <title>Mini-JEPA Robot</title>
   <meta name="description" content="Draw a maze and watch a robot navigate it using a JEPA world model that learned from pixels. It has never seen your map. Runs entirely in your browser.">
   <meta property="og:title" content="Mini-JEPA: a robot that plans in its imagination">
@@ -14,7 +15,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Next:wght@400;500;700&family=Familjen+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=11">
+  <link rel="stylesheet" href="style.css?v=20">
 </head>
 <body>
   <header class="top">
@@ -50,6 +51,34 @@
         <div class="table">
           <div id="board" class="board" role="grid" aria-label="6 by 5 grid world"></div>
         </div>
+        <div class="board-tools">
+          <div class="transport">
+            <button id="run" class="btn run" type="button">
+              <svg class="ico" viewBox="0 0 16 16" aria-hidden="true"><path class="i-play" d="M4 2.5v11l9.5-5.5z"/><path class="i-pause" d="M3.5 2.5h3.2v11H3.5zM9.3 2.5h3.2v11H9.3z"/></svg>
+              <span class="run-label">Run</span>
+            </button>
+            <button id="step" class="btn" type="button">Step</button>
+            <button id="reset" class="btn" type="button">Reset</button>
+            <div class="speed" role="radiogroup" aria-label="Speed">
+              <button type="button" role="radio" data-speed="650" aria-checked="false">Slow</button>
+              <button type="button" role="radio" data-speed="330" aria-checked="true">Normal</button>
+              <button type="button" role="radio" data-speed="120" aria-checked="false">Fast</button>
+            </div>
+          </div>
+          <div id="status" class="status" role="status" aria-live="polite">Loading the model…</div>
+          <div class="maps">
+            <button id="wallChip" class="wall-chip" type="button" aria-label="Drag a wall onto the board">
+              <span class="chip-tile" aria-hidden="true"></span>
+              <span>Drag a wall<span class="chip-sub">or tap and drag across cells</span></span>
+            </button>
+            <div class="presets" role="group" aria-label="Load a map">
+              <button id="random" class="link-btn" type="button">Random map</button>
+              <button id="zigzag" class="link-btn" type="button">Zig-zag</button>
+              <button id="maze" class="link-btn" type="button">Hard maze</button>
+              <button id="clear" class="link-btn" type="button">Clear walls</button>
+            </div>
+          </div>
+        </div>
       </section>
 
       <header class="p-head p-dream">
@@ -70,37 +99,8 @@
         <p class="g-note">Nodes are drawn at the cell whose frame they match, for display only. The robot never sees coordinates.</p>
       </section>
 
-      <div id="status" class="status" role="status" aria-live="polite">Loading the model…</div>
-
       <section class="controls" aria-label="Controls">
         <div class="deck">
-          <div class="transport">
-            <button id="run" class="btn run" type="button">
-              <svg class="ico" viewBox="0 0 16 16" aria-hidden="true"><path class="i-play" d="M4 2.5v11l9.5-5.5z"/><path class="i-pause" d="M3.5 2.5h3.2v11H3.5zM9.3 2.5h3.2v11H9.3z"/></svg>
-              <span class="run-label">Run</span>
-            </button>
-            <button id="step" class="btn" type="button">Step</button>
-            <button id="reset" class="btn" type="button">Reset</button>
-            <div class="speed" role="radiogroup" aria-label="Speed">
-              <button type="button" role="radio" data-speed="650" aria-checked="false">Slow</button>
-              <button type="button" role="radio" data-speed="330" aria-checked="true">Normal</button>
-              <button type="button" role="radio" data-speed="120" aria-checked="false">Fast</button>
-            </div>
-          </div>
-
-          <div class="maps">
-            <button id="wallChip" class="wall-chip" type="button" aria-label="Drag a wall onto the board">
-              <span class="chip-tile" aria-hidden="true"></span>
-              <span>Drag a wall<span class="chip-sub">or tap and drag across cells</span></span>
-            </button>
-            <div class="presets" role="group" aria-label="Load a map">
-              <button id="random" class="link-btn" type="button">Random map</button>
-              <button id="zigzag" class="link-btn" type="button">Zig-zag</button>
-              <button id="maze" class="link-btn" type="button">Hard maze</button>
-              <button id="clear" class="link-btn" type="button">Clear walls</button>
-            </div>
-          </div>
-
           <div class="mode">
             <span id="worldLabel" class="field-label">World</span>
             <div class="seg seg-world" role="radiogroup" aria-labelledby="worldLabel">
@@ -161,20 +161,30 @@
           moves it isn't sure about count as walls.</p></li>
         <li><h3>Act</h3><p>It makes the first move, looks again, and plans again.</p></li>
       </ol>
+      <h3 class="tbl-title" id="resultsTitle">Each approach on unseen test maps</h3>
+      <div class="tbl-wrap" role="region" aria-labelledby="resultsTitle" tabindex="0">
+        <table class="results">
+          <colgroup><col class="c-name"><col span="3"><col span="2" class="c-fog"></colgroup>
+          <thead>
+            <tr><th rowspan="2" scope="col">What the robot is given</th><th colspan="3" scope="colgroup">6 × 5, sees the whole map</th><th colspan="2" scope="colgroup" class="fog-h">10 × 10, fog of war</th></tr>
+            <tr><th scope="col">Like training</th><th scope="col">Dense walls</th><th scope="col">Mazes</th><th scope="col" class="fog-h">Maps</th><th scope="col">Mazes</th></tr>
+          </thead>
+          <tbody>
+          <tr><th scope="row">A picture of every cell<span>Privileged codebook. Every node solid; errors only as red edges.</span></th><td><b>100%</b><small>100% shortest</small></td><td><b>100%</b><small>100% shortest</small></td><td><b>100%</b><small>100% shortest</small></td><td><b>99.8%</b><small>96.3% shortest</small></td><td><b>81.0%</b><small>70.3% shortest</small></td></tr>
+          <tr><th scope="row">Start and goal only<span>Imagined graph, never corrected. Violet and red dashed nodes, red edges through walls.</span></th><td><b>89.4%</b><small>85.9% shortest</small></td><td><b>74.8%</b><small>70.0% shortest</small></td><td><b>40.6%</b><small>38.4% shortest</small></td><td><b>47.3%</b><small>33.9% shortest</small></td><td><b>14.0%</b><small>12.4% shortest</small></td></tr>
+          <tr><th scope="row">Start and goal, then explore<span>Real frames become anchors, executed moves override edges. Dashed nodes turn solid; detours.</span></th><td><b>99.6%</b><small>93.7% shortest</small></td><td><b>97.6%</b><small>85.5% shortest</small></td><td><b>82.7%</b><small>55.9% shortest</small></td><td><b>100%</b><small>48.7% shortest</small></td><td><b>97.8%</b><small>14.7% shortest</small></td></tr>
+          <tr class="ref"><th scope="row">Oracle explorer<span>No model: perfect perception, walls known once seen, unseen cells assumed free.</span></th><td>–</td><td>–</td><td>–</td><td><b>100%</b><small>64.9% shortest</small></td><td><b>100%</b><small>34.0% shortest</small></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="tbl-note">Success rate, with the share of runs on a shortest path below. 6 × 5: 24,146 / 19,680 / 8,048
+        episodes (every free start, two seeds), 30 moves, third visit to a cell is a loop failure. Fog: 4,000 / 2,000 runs
+        (10 starts per map, two seeds), 300 moves. Settings were fixed on validation maps, then each test set was run once.</p>
       <div class="prose">
         <p><b>Why JEPA.</b> The encoder is trained together with the predictor, against a slowly updated copy of
           itself, so the latent space makes moves predictable rather than just redrawing the picture. On 1,200 maps it
           never saw (normal maps, dense walls and winding mazes), it reaches the goal by a shortest path 100% of the time.
           A model with the same networks trained to redraw the next picture instead solves 79% of the mazes.</p>
-        <p><b>Without the free pictures.</b> With <i>a picture of every cell</i>, the robot is shown itself on every free
-          cell before it starts. With <i>start and goal only</i> it has to imagine the rest of the map; its imagination
-          drifts after 3–4 moves, so on long mazes it reaches the goal only 41% of the time. With <i>start and goal, then
-          explore</i> it swaps imagined cells for what it really sees as it walks and trusts moves it actually made over
-          imagined ones: 83% of mazes, 99.6% of ordinary maps.</p>
-        <p><b>Fog of war.</b> In the 10 × 10 world every picture shows only the 3 × 3 cells around the robot. A second
-          model, trained the same way on 70 fogged maps, can't know what lies behind the fog, so imagining the map from
-          the start and goal pictures mostly fails (14% of mazes). Exploring, it reached the goal on 100% of 200 unseen
-          test maps and 97.8% of 100 mazes, with detours where it has to go and look first.</p>
         <p class="fine">Trained on 70 maps with 3–7 walls (fog world: 10–25); the goal is always top-right. The models run
           entirely in your browser (about 3 MB of weights, no server). Built from the
           <a href="https://github.com/sandaruariyaratne/jepa-robot-navigation" target="_blank" rel="noopener">project's</a>
@@ -183,6 +193,6 @@
     </section>
   </main>
 
-  <script type="module" src="js/app.js?v=11"></script>
+  <script type="module" src="js/app.js?v=20"></script>
 </body>
 </html>

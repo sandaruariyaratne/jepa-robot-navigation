@@ -1,5 +1,5 @@
-import * as C from "./core.js?v=11";
-import { createGraph, deriveGraph } from "./graph.js?v=11";
+import * as C from "./core.js?v=20";
+import { createGraph, deriveGraph } from "./graph.js?v=20";
 
 const $ = (s) => document.querySelector(s);
 const board = $("#board");
@@ -14,10 +14,21 @@ const WORLDS = {
          zigzag: [[0, 2], [1, 2], [2, 2], [3, 2], [4, 2], [5, 2], [6, 2], [3, 5], [4, 5], [5, 5], [6, 5], [7, 5], [8, 5], [9, 5],
                   [0, 8], [1, 8], [2, 8], [3, 8], [4, 8], [5, 8], [6, 8]] },                              // 21 walls, 3 switchbacks
 };
+// Notes under the switches: how each approach works, what to look for, and how it did on unseen test maps (REPORT.md §8–12).
 const WORLD_NOTES = {
-  jepa: "Every picture shows the whole map; only the robot moves.",
-  fog: "Every picture shows only the 3 × 3 cells around the robot; the rest is fog, so it finds walls by walking. "
-    + "A second model, trained on 70 fogged maps. In tests, “then explore” reached the goal on 100% of new maps and 97.8% of mazes.",
+  jepa: {
+    how: "Every 48×40 frame shows the whole map; only the robot's position changes between frames. "
+      + "Joint JEPA trained on 70 maps with 3–7 walls.",
+    tested: "1,200 unseen layouts: 500 like training, 500 with dense walls (8–14), 200 winding mazes (paths up to 18 moves).",
+  },
+  fog: {
+    how: "Each 80×80 frame shows only the 3×3 cells around the robot; walls further away stay hidden until it is next "
+      + "to them. A second JEPA, trained on 70 fogged maps with 10–25 walls. Imagined maps use two thresholds: a "
+      + "prediction within <i>stay</i> (3.53) of its own cell is a bump; within <i>merge</i> (4.47) of a node it is "
+      + "that node, otherwise a new imagined node.",
+    tested: "200 unseen maps and 100 mazes with 25–35 walls (more than any training map), 10 start cells each, two seeds, "
+      + "300-move budget.",
+  },
 };
 
 const state = {
@@ -29,12 +40,50 @@ const state = {
   imap: null, match: null, planMatch: null, seen: [], node: undefined, prevNode: undefined,
 };
 const MODE_NOTES = {
-  full: "Before it starts, it is shown a picture of itself on every free cell. This is how the 100% results were measured.",
-  imagine: "It gets only the start and goal pictures and imagines the rest. Hatched cells are missing from its imagined map; "
-    + "a blue corner marks a picture it has really seen.",
-  explore: "Starts the same way, then swaps imagined cells for what it really sees as it walks, and trusts moves it actually "
-    + "made. Hatched cells are not imagined yet; a blue corner marks a picture it has really seen.",
+  full: {
+    how: "Before the run, the encoder sees a rendered frame of the robot on every free cell; those latents are the "
+      + "codebook. Only the edges between them are imagined. Privileged: a real agent never sees itself where it hasn't been.",
+    watch: "Every node in the graph is solid; errors show only as red edges.",
+    tested: {
+      jepa: "100% success, shortest path, on all three sets (51,874 episodes). A pixel world model with the same "
+        + "networks solves 79% of mazes.",
+      fog: "99.8% of maps but 81.0% of mazes: edges into fog are imagined and never corrected.",
+    },
+  },
+  imagine: {
+    how: "It gets two frames: its current one and the goal. It imagines all 4 moves from each node, breadth first; a "
+      + "prediction within threshold of a node merges into it, otherwise it becomes a new imagined node and is expanded "
+      + "in turn. It plans on that graph and never corrects it.",
+    watch: "Violet dashed nodes are imagined, red dashed ones are hallucinations matching no real cell, red edges go "
+      + "through walls. Hatched board cells are missing from the imagined map.",
+    tested: {
+      jepa: "89.4% of training-like maps, 74.8% dense, 40.6% of mazes. The latent drifts about one cell's distance "
+        + "within 3–5 moves, so maze success falls from 99% at 3 moves to 5% at 12.",
+      fog: "47.3% of maps, 14.0% of mazes: it has to imagine walls hidden in fog, so its imagined maze has about 3× as "
+        + "many nodes as real cells.",
+    },
+  },
+  explore: {
+    how: "Starts like imagine. Each new cell it really sees becomes an anchor and the map is regrown around it; every "
+      + "executed move, bumps included, overrides the imagined edge. With no route to the goal on the graph, it heads "
+      + "for the nearest node it has only imagined (frontier exploration).",
+    watch: "Dashed nodes turn solid as it walks, and it sometimes detours to go and look first. A blue corner marks a "
+      + "frame it has really seen.",
+    tested: {
+      jepa: "99.6% of training-like maps, 97.6% dense, 82.7% of mazes (94.1% with a 60-move budget), steady at 71–87% "
+        + "for routes of 9–17 moves.",
+      fog: "100% of maps, 97.8% of mazes, better than the every-cell codebook, but with detours: 15% of maze runs take "
+        + "a shortest path, against 34% for an oracle explorer that sees perfectly.",
+    },
+  },
 };
+const noteRow = (label, html) => `<span class="nr lbl"><b>${label}</b><span>${html}</span></span>`;
+function renderNotes(worldKey = state.modelKey) {
+  const w = WORLD_NOTES[worldKey], m = MODE_NOTES[state.mode];
+  $("#worldNote").innerHTML = `<span class="nr">${w.how}</span>` + noteRow("Tested on", w.tested);
+  $("#modeNote").innerHTML = `<span class="nr">${m.how}</span>` + noteRow("Watch for", m.watch)
+    + noteRow("Result", m.tested[worldKey]);
+}
 const imagining = () => state.mode !== "full";
 const models = {};
 const model = () => models[state.modelKey];
@@ -609,7 +658,7 @@ function setMode(mode) {
   graph.regrow();
   document.querySelectorAll(".seg-mode .seg-btn").forEach((b) => b.setAttribute("aria-checked", String(b.dataset.mode === mode)));
   $(".seg-mode").style.setProperty("--i", ["full", "imagine", "explore"].indexOf(mode));
-  $("#modeNote").textContent = MODE_NOTES[mode];
+  renderNotes();
   resetRun();
 }
 document.querySelectorAll(".seg-mode .seg-btn").forEach((b) => b.addEventListener("click", () => setMode(b.dataset.mode)));
@@ -631,7 +680,7 @@ async function setWorld(k) {
   stop();
   document.querySelectorAll(".seg-world .seg-btn").forEach((b) => b.setAttribute("aria-checked", String(b.dataset.world === k)));
   $(".seg-world").style.setProperty("--i", WORLD_ORDER.indexOf(k));
-  $("#worldNote").textContent = WORLD_NOTES[k];
+  renderNotes(k);
   if (!models[k]) setStatus("Loading the model for this world…");
   loadingWorld = k;
   try { await getModel(k); }
@@ -656,8 +705,7 @@ $(".seg-world").addEventListener("keydown", (e) => {
   const k = WORLD_ORDER[(WORLD_ORDER.indexOf(state.modelKey) + d + WORLD_ORDER.length) % WORLD_ORDER.length];
   setWorld(k).then(() => document.querySelector(`.seg-btn[data-world="${k}"]`).focus());
 });
-$("#worldNote").textContent = WORLD_NOTES.jepa;
-$("#modeNote").textContent = MODE_NOTES.full;
+renderNotes("jepa");
 $("#showD").addEventListener("change", (e) => { state.showD = e.target.checked; drawBoard(); });
 const TIMING = { 650: [".6s", ".5s"], 330: [".45s", ".32s"], 120: [".2s", ".1s"] };   // move, think
 function setSpeed(ms) {

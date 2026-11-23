@@ -1,7 +1,7 @@
 // The imagined transition graph, drawn beside the board. Display only: nothing here feeds the agent.
 // Nodes sit at the cell whose frame they match (the agent itself never sees coordinates). Edges are the
 // predictor's snapped transitions; each is checked against the real environment to colour it.
-import * as C from "./core.js?v=11";
+import * as C from "./core.js?v=20";
 
 const NS = "http://www.w3.org/2000/svg";
 const DUP = [[0, 0], [0.24, -0.22], [-0.24, 0.22], [0.24, 0.22], [-0.24, -0.22], [0, 0.3], [0, -0.3]];
