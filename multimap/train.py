@@ -1,4 +1,4 @@
-"""Train the v1 model on the 70 training maps: `python -m multimap.train --config config_multimap.yaml`.
+"""Train the v1 model on the 70 training maps: `python -m multimap.train --config configs/multimap.yaml`.
 
 Stage 1  autoencoder (v1 recipe) on the distinct frames of the training maps.
          Gate, on the *validation* maps (layouts never trained on): a linear probe

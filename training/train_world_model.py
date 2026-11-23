@@ -266,7 +266,7 @@ def save_checkpoint(model: Predictor, cfg: dict, metrics: dict, path: str | Path
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Train the residual latent predictor (Stage 2).")
-    parser.add_argument("--config", type=Path, default=None, help="config file (default: config.yaml)")
+    parser.add_argument("--config", type=Path, default=None, help="config file (default: configs/single_map.yaml)")
     args = parser.parse_args()
     cfg = load_config(args.config)
     pcfg = cfg["predictor"]

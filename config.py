@@ -1,4 +1,4 @@
-"""Load config.yaml, the single source of settings for every script."""
+"""Load a config from configs/ (default configs/single_map.yaml), the single source of settings for every script."""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ from typing import Any
 import yaml
 
 ROOT = Path(__file__).resolve().parent
-DEFAULT_CONFIG = ROOT / "config.yaml"
+DEFAULT_CONFIG = ROOT / "configs" / "single_map.yaml"
 
 
 def _merge(base: dict, over: dict) -> dict:
@@ -32,6 +32,6 @@ def load_config(path: str | Path | None = None) -> dict[str, Any]:
 
 
 def resolve(path: str | Path) -> Path:
-    """Paths in config.yaml are relative to the project root."""
+    """Paths in the configs are relative to the project root."""
     p = Path(path)
     return p if p.is_absolute() else ROOT / p

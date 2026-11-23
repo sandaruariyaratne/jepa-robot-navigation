@@ -1,4 +1,4 @@
-"""Regenerate every step 9 result from config.yaml: `python -m evaluation`.
+"""Regenerate every single-map result from the config (default configs/single_map.yaml): `python -m evaluation`.
 
 Writes <results_dir>/results.md (the table), results.json (everything) and
 three plots: prediction_horizons.png, success_by_distance.png, ladder.png.
@@ -95,7 +95,7 @@ def render_markdown(cfg: dict, model: dict, nav: dict, ladder: dict, diagnosis: 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Regenerate the step 9 results table and plots.")
-    parser.add_argument("--config", type=Path, default=None, help="config file (default: config.yaml)")
+    parser.add_argument("--config", type=Path, default=None, help="config file (default: configs/single_map.yaml)")
     args = parser.parse_args()
     cfg = load_config(args.config)
     seeds = cfg["evaluation"]["seeds"]

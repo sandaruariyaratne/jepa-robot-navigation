@@ -8,3 +8,6 @@ __pycache__/
 
 # design documents kept local
 *.pdf
+
+# local tool settings
+.claude/

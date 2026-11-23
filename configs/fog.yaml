@@ -1,13 +1,13 @@
-# Level C: fog of war on a 10 x 10 grid (REPORT section 12).
+# Fog of war on a 10 x 10 grid (REPORT section 8).
 # The robot sees only the cells within 1 step of itself (3 x 3); everything else is drawn as fog.
-# Same JEPA recipe as config_multimap_jepa.yaml, retrained on fogged 80 x 80 frames.
-#   python -m multimap.collect --config config_fog.yaml
-#   python -m multimap.train_jepa --config config_fog.yaml
-#   python -m multimap.calibrate --config config_fog.yaml
-#   python -m multimap.explore --config config_fog.yaml --set val_fog_maps
+# Same JEPA recipe as configs/multimap_jepa.yaml, retrained on fogged 80 x 80 frames.
+#   python -m multimap.collect --config configs/fog.yaml
+#   python -m multimap.train_jepa --config configs/fog.yaml
+#   python -m multimap.calibrate --config configs/fog.yaml
+#   python -m multimap.explore --config configs/fog.yaml --set val_fog_maps
 # Only the fog_* / val_fog_* sets below belong to this grid; the 6 x 5 sets inherited from
-# config_multimap.yaml (new_maps, maze_maps, ...) must not be used with this config.
-extends: config_multimap_jepa.yaml
+# configs/multimap.yaml (new_maps, maze_maps, ...) must not be used with this config.
+extends: multimap_jepa.yaml
 
 multimap:
   label: joint JEPA, 10 x 10, fog of war (radius 1)
@@ -20,25 +20,25 @@ multimap:
   max_walls: 25
   episodes_per_map: 40
   steps_per_episode: 100               # -> 4,000 transitions per map (~85 free cells, 340 cell-actions)
-  maps_path: data_fog/maps.json
-  data_path: data_fog/transitions.npz
+  maps_path: datasets/fog/maps.json
+  data_path: datasets/fog/transitions.npz
 
   jepa:
     maps_per_step: 8                   # ~85 frames each, 80 x 80 pixels (~0.6 s per step on a laptop CPU)
     steps: 8000                        # ~3x the states of the 6 x 5 grid; ~1.5 h
     curriculum: [[1, 1], [2701, 2], [5401, 4]]
-    metrics: checkpoints_fog/jepa_metrics.json
+    metrics: checkpoints/fog/jepa_metrics.json
 
   encoder:
-    checkpoint: checkpoints_fog/encoder.pt
+    checkpoint: checkpoints/fog/encoder.pt
   predictor:
-    checkpoint: checkpoints_fog/predictor.pt
+    checkpoint: checkpoints/fog/predictor.pt
   evaluation:
-    results_dir: results_fog
+    results_dir: results/fog
 
   explore:                             # multimap.explore on this grid
     two_thresholds: true               # imagined maps (A, B) use stay / merge thresholds (multimap.explore.fog_thresholds);
-                                       # the every-cell codebook keeps the calibrated one. Chosen on validation, REPORT section 12
+                                       # the every-cell codebook keeps the calibrated one. Chosen on validation, REPORT section 8
     max_nodes: 250
     standard: {max_actions: 100, max_visits: 3}       # the usual loop rule
     explorer: {max_actions: 300, max_visits: 1000000}  # fog needs backtracking: generous budget, no loop rule
@@ -50,8 +50,8 @@ multimap:
     seed: 31
     episodes_per_map: 40
     steps_per_episode: 100
-    maps_path: data_fog_val/maps.json
-    data_path: data_fog_val/transitions.npz
+    maps_path: datasets/fog_val_maps/maps.json
+    data_path: datasets/fog_val_maps/transitions.npz
     nav_seeds: [0, 1]
     nav_starts: 10                     # random free start cells per map (seeded)
   val_fog_mazes:
@@ -64,8 +64,8 @@ multimap:
     seed: 32
     episodes_per_map: 40
     steps_per_episode: 100
-    maps_path: data_fog_valmaze/maps.json
-    data_path: data_fog_valmaze/transitions.npz
+    maps_path: datasets/fog_val_mazes/maps.json
+    data_path: datasets/fog_val_mazes/transitions.npz
     nav_seeds: [0, 1]
     nav_starts: 10
     exclude_sets: [val_fog_maps]
@@ -75,8 +75,8 @@ multimap:
     seed: 33
     episodes_per_map: 40
     steps_per_episode: 100
-    maps_path: data_fog_test/maps.json
-    data_path: data_fog_test/transitions.npz
+    maps_path: datasets/fog_test_maps/maps.json
+    data_path: datasets/fog_test_maps/transitions.npz
     nav_seeds: [0, 1]
     nav_starts: 10
     exclude_sets: [val_fog_maps, val_fog_mazes]
@@ -90,8 +90,8 @@ multimap:
     seed: 34
     episodes_per_map: 40
     steps_per_episode: 100
-    maps_path: data_fog_testmaze/maps.json
-    data_path: data_fog_testmaze/transitions.npz
+    maps_path: datasets/fog_test_mazes/maps.json
+    data_path: datasets/fog_test_mazes/transitions.npz
     nav_seeds: [0, 1]
     nav_starts: 10
     exclude_sets: [val_fog_maps, val_fog_mazes, fog_maps]

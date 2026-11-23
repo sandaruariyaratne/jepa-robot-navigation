@@ -3,7 +3,7 @@
     .venv/bin/python web/export_models.py
 
 Writes web/models/<key>.{json,bin} for the 6 x 5 model (jepa) and the 10 x 10 fog-of-war
-model (fog, REPORT section 12): every tensor as float32, little-endian, concatenated; the
+model (fog, REPORT section 8): every tensor as float32, little-endian, concatenated; the
 JSON lists names, shapes and offsets plus the grid and the planning settings (snapped P2,
 unknown threshold calibrated on the validation maps; for fog also the stay / merge
 thresholds of imagined maps and the explorer's budget). web/test/vectors.json holds
@@ -37,8 +37,8 @@ from planning.latent_graph import build_graph, goal_entry, steps_to_goal  # noqa
 from planning.planner import P2, PlanContext  # noqa: E402
 
 OUT = ROOT / "web"
-MODELS = {"jepa": ("config_multimap_jepa.yaml", "Joint JEPA (v2)"),            # the demo shows the JEPA only
-          "fog": ("config_fog.yaml", "Joint JEPA, 10 x 10, fog of war")}
+MODELS = {"jepa": ("configs/multimap_jepa.yaml", "Joint JEPA (v2)"),            # the demo shows the JEPA only
+          "fog": ("configs/fog.yaml", "Joint JEPA, 10 x 10, fog of war")}
 
 
 def export_model(key: str) -> tuple[dict, object, object]:
@@ -128,10 +128,10 @@ def vectors_for(grid: GridMap, meta: dict, encoder, predictor) -> dict:
 
 
 def main() -> None:
-    new, _ = load_maps(ROOT / "data_newmaps/maps.json")
-    maze, _ = load_maps(ROOT / "data_mazemaps/maps.json")
-    hard, _ = load_maps(ROOT / "data_hardmaps/maps.json")
-    fog_cfg = load_config(ROOT / "config_fog.yaml")["multimap"]
+    new, _ = load_maps(ROOT / "datasets/new_maps/maps.json")
+    maze, _ = load_maps(ROOT / "datasets/maze_maps/maps.json")
+    hard, _ = load_maps(ROOT / "datasets/hard_maps/maps.json")
+    fog_cfg = load_config(ROOT / "configs/fog.yaml")["multimap"]
     fog_maps, _ = load_maps(resolve(fog_cfg["fog_maps"]["maps_path"]))
     fog_mazes, _ = load_maps(resolve(fog_cfg["fog_mazes"]["maps_path"]))
     layouts = {

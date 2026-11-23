@@ -322,7 +322,7 @@ def print_report(metrics: dict, cells: CellIndex) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Train and freeze the autoencoder (Stage 1).")
-    parser.add_argument("--config", type=Path, default=None, help="config file (default: config.yaml)")
+    parser.add_argument("--config", type=Path, default=None, help="config file (default: configs/single_map.yaml)")
     args = parser.parse_args()
     cfg = load_config(args.config)
     ecfg = cfg["encoder"]

@@ -1,7 +1,7 @@
-# Multi-map experiment (build plan step 12: many layouts with held-out layouts), v1 model.
+# Many maps (REPORT section 4), autoencoder baseline: frozen autoencoder latents + residual predictor.
 # 100 random layouts, goal fixed at (5,0), split 70 / 15 / 15 by map; test maps are never trained on.
-#   python main.py multimap --config config_multimap.yaml        (collect -> train -> evaluate)
-extends: config.yaml
+#   python main.py multimap --config configs/multimap.yaml        (collect -> train -> evaluate)
+extends: single_map.yaml
 
 multimap:
   n_maps: 100
@@ -10,8 +10,8 @@ multimap:
   split_fractions: [0.7, 0.15, 0.15]   # train / val / test, by map
   episodes_per_map: 20
   steps_per_episode: 50                # -> 1,000 transitions per map, 100,000 in all
-  maps_path: data_multimap/maps.json
-  data_path: data_multimap/transitions.npz
+  maps_path: datasets/multimap/maps.json
+  data_path: datasets/multimap/transitions.npz
 
   encoder:                             # v1 autoencoder recipe, gate checked on unseen (validation) maps
     latent_dim: 64                     # v1 used 32; the latent now has to hold the wall layout as well
@@ -24,10 +24,10 @@ multimap:
     fallback_robot_weight: 10.0
     gate_probe_accuracy: 0.99          # linear probe: robot cell from validation-map latents
     gate_robot_decode: 0.99            # decoded validation-map frames showing the robot in the right cell
-    checkpoint: checkpoints_multimap/encoder.pt
-    decoder_checkpoint: checkpoints_multimap/decoder.pt
-    metrics: checkpoints_multimap/encoder_metrics.json
-    decodes_png: checkpoints_multimap/encoder_decodes.png
+    checkpoint: checkpoints/multimap/encoder.pt
+    decoder_checkpoint: checkpoints/multimap/decoder.pt
+    metrics: checkpoints/multimap/encoder_metrics.json
+    decodes_png: checkpoints/multimap/encoder_decodes.png
 
   predictor:                           # v1 residual predictor recipe
     hidden: [256, 256]                 # v1 used 128; it now has to read blocked moves off the image
@@ -38,24 +38,24 @@ multimap:
     curriculum: [[1, 1], [11, 2], [21, 4]]
     select_horizon: 5                  # checkpoint = best 5-step snap accuracy on validation maps
     eval_horizon: 10
-    checkpoint: checkpoints_multimap/predictor.pt
-    metrics: checkpoints_multimap/predictor_metrics.json
+    checkpoint: checkpoints/multimap/predictor.pt
+    metrics: checkpoints/multimap/predictor_metrics.json
 
   evaluation:
     seeds: [0, 1]                      # planning tie-break seeds; every start cell of every map
-    results_dir: results_multimap
+    results_dir: results/multimap
 
   calibration:                         # python -m multimap.calibrate: unknown threshold from validation maps
     quantile: 0.999                    # of correct one-step snap distances (used with --threshold calibrated)
     horizon: 3                         # also report steps 2..3, which P2 snaps with the same threshold
 
   new_maps:                            # stress test: 500 more layouts, never trained, validated or tested on
-    n_maps: 500                        #   python -m multimap.new_maps --config config_multimap_jepa.yaml
+    n_maps: 500                        #   python -m multimap.new_maps --config configs/multimap_jepa.yaml
     seed: 1                            # layouts / episodes; all 100 experiment layouts are excluded
     episodes_per_map: 20               # random-action episodes, for rollout and one-step / collision accuracy
     steps_per_episode: 50
-    maps_path: data_newmaps/maps.json
-    data_path: data_newmaps/transitions.npz
+    maps_path: datasets/new_maps/maps.json
+    data_path: datasets/new_maps/transitions.npz
     nav_seeds: [0, 1]                  # navigation from every free start cell of every map, per seed
 
   hard_maps:                           # harder: 8-14 walls (training had 3-7), random placement
@@ -66,8 +66,8 @@ multimap:
     seed: 2
     episodes_per_map: 20
     steps_per_episode: 50
-    maps_path: data_hardmaps/maps.json
-    data_path: data_hardmaps/transitions.npz
+    maps_path: datasets/hard_maps/maps.json
+    data_path: datasets/hard_maps/transitions.npz
     nav_seeds: [0, 1]
 
   maze_maps:                           # hardest: 8-14 walls, the 200 most winding of 20,000 layouts
@@ -80,8 +80,8 @@ multimap:
     seed: 3
     episodes_per_map: 20
     steps_per_episode: 50
-    maps_path: data_mazemaps/maps.json
-    data_path: data_mazemaps/transitions.npz
+    maps_path: datasets/maze_maps/maps.json
+    data_path: datasets/maze_maps/transitions.npz
     nav_seeds: [0, 1]
 
   # Fresh validation layouts for choosing the planner / threshold (never used as test sets).
@@ -95,8 +95,8 @@ multimap:
     seed: 21
     episodes_per_map: 20
     steps_per_episode: 50
-    maps_path: data_valmaze/maps.json
-    data_path: data_valmaze/transitions.npz
+    maps_path: datasets/val_mazes/maps.json
+    data_path: datasets/val_mazes/transitions.npz
     nav_seeds: [0, 1]
     exclude_sets: [new_maps, hard_maps, maze_maps]
   val_hard_maps:
@@ -107,7 +107,7 @@ multimap:
     seed: 22
     episodes_per_map: 20
     steps_per_episode: 50
-    maps_path: data_valhard/maps.json
-    data_path: data_valhard/transitions.npz
+    maps_path: datasets/val_hard/maps.json
+    data_path: datasets/val_hard/transitions.npz
     nav_seeds: [0, 1]
     exclude_sets: [new_maps, hard_maps, maze_maps, val_maze_maps]

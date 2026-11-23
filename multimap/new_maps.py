@@ -1,7 +1,7 @@
 """Stress test on 500 brand-new layouts, no retraining:
 
-    python -m multimap.new_maps --config config_multimap_jepa.yaml     (joint JEPA)
-    python -m multimap.new_maps --config config_multimap.yaml          (v1, for comparison)
+    python -m multimap.new_maps --config configs/multimap_jepa.yaml     (joint JEPA)
+    python -m multimap.new_maps --config configs/multimap.yaml          (v1, for comparison)
 
 The layouts come from a different seed, with all 100 experiment layouts
 (train / val / test) and the v1 reference map excluded, so the model has never

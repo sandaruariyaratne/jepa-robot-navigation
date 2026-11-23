@@ -11,7 +11,7 @@ from multimap.explore import run_oracle
 from multimap.maps import generate_maps, load_maps, save_maps
 from multimap.train import set_grid, set_grid_from_frames
 
-CFG = load_config(ROOT / "config_fog.yaml")
+CFG = load_config(ROOT / "configs/fog.yaml")
 
 
 def cell_color(frame, x, y, px=8):

@@ -14,7 +14,7 @@ const WORLDS = {
          zigzag: [[0, 2], [1, 2], [2, 2], [3, 2], [4, 2], [5, 2], [6, 2], [3, 5], [4, 5], [5, 5], [6, 5], [7, 5], [8, 5], [9, 5],
                   [0, 8], [1, 8], [2, 8], [3, 8], [4, 8], [5, 8], [6, 8]] },                              // 21 walls, 3 switchbacks
 };
-// Notes under the switches: how each approach works, what to look for, and how it did on unseen test maps (REPORT.md §8–12).
+// Notes under the switches: how each approach works, what to look for, and how it did on unseen test maps (REPORT.md §4–8).
 const WORLD_NOTES = {
   jepa: {
     how: "Every 48×40 frame shows the whole map; only the robot's position changes between frames. "

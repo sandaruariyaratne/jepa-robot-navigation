@@ -126,7 +126,7 @@ def test_plots_render(tmp_path):
 @pytest.mark.skipif(not all(resolve(CFG[k]["checkpoint"]).exists() for k in ("encoder", "predictor")),
                     reason="needs the trained encoder and predictor checkpoints")
 def test_one_command_regenerates_everything(tmp_path):
-    cfg = yaml.safe_load((ROOT / "config.yaml").read_text())
+    cfg = yaml.safe_load((ROOT / "configs" / "single_map.yaml").read_text())
     cfg["evaluation"]["seeds"] = [0]
     cfg["evaluation"]["results_dir"] = str(tmp_path / "results")
     cfg_path = tmp_path / "config.yaml"

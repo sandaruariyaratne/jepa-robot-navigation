@@ -104,7 +104,7 @@ def load_split(
     cfg: dict | None = None,
     data: dict[str, np.ndarray] | None = None,
 ) -> TransitionWindows:
-    """Dataset for 'train' / 'val' / 'test' from the files named in config.yaml.
+    """Dataset for 'train' / 'val' / 'test' from the files named in the config.
 
     drop_heldout=True removes windows touching the held-out pairs (predictor training).
     """

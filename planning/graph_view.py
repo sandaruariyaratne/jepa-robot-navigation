@@ -1,6 +1,6 @@
 """Draw the imagined graph and D(c): `python -m planning.graph_view`.
 
-Reads checkpoints/graph_metrics.json (written by `python -m planning.latent_graph`) and writes:
+Reads checkpoints/single_map/graph_metrics.json (written by `python -m planning.latent_graph`) and writes:
 
 latent_graph.png -- node-link graph (matplotlib). One node per codebook entry,
 columns = imagined steps-to-goal D(c), arrows = imagined moves, dashed orange =
@@ -323,7 +323,7 @@ def main() -> None:
     from data import load_splits
 
     parser = argparse.ArgumentParser(description="Draw the imagined graph as a PNG.")
-    parser.add_argument("--config", type=Path, default=None, help="config file (default: config.yaml)")
+    parser.add_argument("--config", type=Path, default=None, help="config file (default: configs/single_map.yaml)")
     parser.add_argument("--out-dir", type=Path, default=None, help="output folder (default: next to the metrics)")
     args = parser.parse_args()
     cfg = load_config(args.config)

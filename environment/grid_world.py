@@ -31,7 +31,7 @@ REFERENCE_START: Pos = (0, 4)
 class GridMap:
     """Static layout: size, walls and goal. Holds the transition rules.
 
-    view_radius: None = the robot sees the whole grid (every experiment up to REPORT section 11).
+    view_radius: None = the robot sees the whole grid (every experiment up to REPORT section 7).
     r = fog of war: every cell more than r cells from the robot (Chebyshev distance) is drawn as fog.
     """
 

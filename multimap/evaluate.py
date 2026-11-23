@@ -1,4 +1,4 @@
-"""Evaluate the multi-map model: `python -m multimap.evaluate --config config_multimap.yaml`.
+"""Evaluate the multi-map model: `python -m multimap.evaluate --config configs/multimap.yaml`.
 
 Same questions as v1, asked separately of the training maps (fit), validation
 maps and the 15 unseen test maps (generalization):

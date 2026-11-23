@@ -12,7 +12,7 @@ from multimap.maps import generate_maps, is_valid, load_maps, save_maps, split_m
 from multimap.train import cell_ids, codebooks, decoded_robot_cells, latent_table, snap_in_map, wall_accuracy, windows
 from planning.true_model import TrueModel
 
-CFG = load_config(ROOT / "config_multimap.yaml")
+CFG = load_config(ROOT / "configs/multimap.yaml")
 
 
 @pytest.fixture(scope="module")
@@ -123,7 +123,7 @@ def test_multimap_jepa_trains_and_selects_on_validation_maps(small):
     from multimap.train_jepa import train as train_jepa
 
     sub, data = small
-    cfg = load_config(ROOT / "config_multimap_jepa.yaml")
+    cfg = load_config(ROOT / "configs/multimap_jepa.yaml")
     cfg["multimap"]["jepa"].update(latent_dim=8, hidden=[16], steps=4, eval_every=2, maps_per_step=2,
                                    windows_per_step=16, curriculum=[[1, 1], [3, 2]])
     cfg["probe"]["steps"] = 20
@@ -173,7 +173,7 @@ def test_chunked_new_map_metrics_equal_the_unchunked_ones(small):
 def test_maze_selection_keeps_the_most_winding_layouts(tmp_path):
     from multimap.new_maps import mean_distance, new_maps_and_data
 
-    cfg = load_config(ROOT / "config_multimap.yaml")
+    cfg = load_config(ROOT / "configs/multimap.yaml")
     cfg["multimap"]["maze_maps"].update(n_maps=5, pool=60, episodes_per_map=1, steps_per_episode=5,
                                         maps_path=str(tmp_path / "m.json"), data_path=str(tmp_path / "t.npz"))
     maps, data, old = new_maps_and_data(cfg, "maze_maps")
@@ -195,7 +195,7 @@ def test_calibrated_threshold_is_the_validation_quantile_of_correct_one_step_sna
                 "median_one_step_error": 0.5}, tmp_path / "p.pt")
     save_maps(sub, {"train": [0], "val": [1, 2], "test": []}, tmp_path / "m.json")
     monkeypatch.setattr(cal, "load", lambda _: data)
-    cfg = load_config(ROOT / "config_multimap.yaml")
+    cfg = load_config(ROOT / "configs/multimap.yaml")
     mm = cfg["multimap"]
     mm.update(maps_path=str(tmp_path / "m.json"), calibration={"quantile": 0.9, "horizon": 2})
     mm["encoder"]["checkpoint"], mm["predictor"]["checkpoint"] = str(tmp_path / "e.pt"), str(tmp_path / "p.pt")
@@ -242,7 +242,7 @@ def test_step3_variants_train(small, over):
     from multimap.train_jepa import train as train_jepa
 
     sub, data = small
-    cfg = load_config(ROOT / "config_multimap_jepa.yaml")
+    cfg = load_config(ROOT / "configs/multimap_jepa.yaml")
     cfg["multimap"]["jepa"].update({"latent_dim": 8, "hidden": [16], "steps": 4, "eval_every": 2, "maps_per_step": 2,
                                     "windows_per_step": 16, "curriculum": [[1, 1], [3, 2]], **over})
     cfg["probe"]["steps"] = 20
@@ -255,7 +255,7 @@ def test_bad_variant_is_rejected(small):
     from multimap.train_jepa import train as train_jepa
 
     sub, data = small
-    cfg = load_config(ROOT / "config_multimap_jepa.yaml")
+    cfg = load_config(ROOT / "configs/multimap_jepa.yaml")
     cfg["multimap"]["jepa"]["objective"] = "contrastive"
     with pytest.raises(ValueError):
         train_jepa(cfg, data, {"train": [0, 1], "val": [2], "test": []}, len(sub), verbose=False)

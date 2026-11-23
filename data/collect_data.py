@@ -111,7 +111,7 @@ def _sha256(path: Path) -> str:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Collect the random-transition dataset.")
-    parser.add_argument("--config", type=Path, default=None, help="config file (default: config.yaml)")
+    parser.add_argument("--config", type=Path, default=None, help="config file (default: configs/single_map.yaml)")
     args = parser.parse_args()
     cfg = load_config(args.config)
     grid_map = GridMap()

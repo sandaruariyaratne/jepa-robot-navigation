@@ -23,7 +23,7 @@ def test_strip_timing():
 
 
 def _tmp_config(tmp_path, episodes=6):
-    cfg = yaml.safe_load((ROOT / "config.yaml").read_text())
+    cfg = yaml.safe_load((ROOT / "configs" / "single_map.yaml").read_text())
     cfg["data"]["episodes"] = episodes
     cfg["data"]["path"] = str(tmp_path / "t.npz")
     cfg["data"]["splits_path"] = str(tmp_path / "s.json")

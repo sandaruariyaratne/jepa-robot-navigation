@@ -398,7 +398,7 @@ def evaluate(cfg: dict, set_key: str, modes=MODES, threshold: float | None = Non
     per_mode = {m: threshold for m in modes}
     if mm.get("explore", {}).get("two_thresholds") and not isinstance(threshold, (tuple, list)):
         # fog: imagined maps (A, B) need separate stay / merge thresholds; the full codebook keeps the
-        # calibrated one, which did better there on validation (REPORT section 12)
+        # calibrated one, which did better there on validation (REPORT section 8)
         t = fog_thresholds(cfg)
         per_mode.update({m: (t["stay"], t["merge"]) for m in modes if m in ("imagine", "explore")})
     tot = {m: Counter() for m in modes}
@@ -586,7 +586,7 @@ def render(res: dict) -> str:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Plan from real pictures only: imagine the map (A) and explore (B).")
-    parser.add_argument("--config", type=Path, default=Path("config_multimap_jepa.yaml"))
+    parser.add_argument("--config", type=Path, default=Path("configs/multimap_jepa.yaml"))
     parser.add_argument("--set", default="val_maze_maps")
     parser.add_argument("--modes", default=",".join(MODES), help=f"any of {','.join(ALL_MODES)}")
     parser.add_argument("--threshold", type=float, default=None, help="default: the calibrated unknown threshold")

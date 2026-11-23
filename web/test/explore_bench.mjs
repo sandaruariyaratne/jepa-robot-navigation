@@ -1,6 +1,6 @@
 // JS imagination (A) / exploration (B) on the benchmark maps, to compare with the Python numbers:
 //   node web/test/explore_bench.mjs [maze_maps|new_maps|fog_maps|fog_mazes] [number of maps]
-// fog_* use the 10 x 10 fog-of-war model and the test runs' start cells (results_fog/explore_fog_*).
+// fog_* use the 10 x 10 fog-of-war model and the test runs' start cells (results/fog/explore_fog_*).
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";

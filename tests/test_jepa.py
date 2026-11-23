@@ -20,7 +20,7 @@ from training.train_jepa import (
     vicreg_terms,
 )
 
-CFG2 = load_config(ROOT / "config_v2.yaml")
+CFG2 = load_config(ROOT / "configs/single_map_jepa.yaml")
 CELLS = CellIndex()
 
 
@@ -39,9 +39,9 @@ def test_v2_config_extends_v1():
     assert CFG2["data"] == base["data"]
     assert {k: v for k, v in CFG2["planning"].items() if k != "metrics"} == \
         {k: v for k, v in base["planning"].items() if k != "metrics"}
-    assert CFG2["encoder"]["checkpoint"] == "checkpoints_v2/encoder.pt"
+    assert CFG2["encoder"]["checkpoint"] == "checkpoints/single_map_jepa/encoder.pt"
     assert CFG2["encoder"]["latent_dim"] == base["encoder"]["latent_dim"]  # untouched keys survive the merge
-    assert CFG2["jepa"]["ema_tau"] == 0.99 and CFG2["evaluation"]["results_dir"] == "results_v2"
+    assert CFG2["jepa"]["ema_tau"] == 0.99 and CFG2["evaluation"]["results_dir"] == "results/single_map_jepa"
     assert "extends" not in CFG2
 
 

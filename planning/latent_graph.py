@@ -179,7 +179,7 @@ def main() -> None:
     from environment import GridWorld
 
     parser = argparse.ArgumentParser(description="Build the imagined graph and D(c).")
-    parser.add_argument("--config", type=Path, default=None, help="config file (default: config.yaml)")
+    parser.add_argument("--config", type=Path, default=None, help="config file (default: configs/single_map.yaml)")
     args = parser.parse_args()
     cfg = load_config(args.config)
     world = WorldModel.from_checkpoints(resolve(cfg["encoder"]["checkpoint"]),

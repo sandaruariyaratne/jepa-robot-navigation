@@ -1,21 +1,24 @@
-"""Mini-JEPA: one entry point for the whole pipeline (build plan step 11).
+"""Mini-JEPA: one entry point for the single-map pipeline and the multi-map training runs.
 
+Single map (REPORT section 2), configs/single_map.yaml:
     python main.py all                 everything below, in order (~10 min on a laptop CPU)
-    python main.py collect             step 2   data/transitions.npz + data/splits.json
-    python main.py train-numerical     step 3   checkpoints/numerical.pt
-    python main.py train-encoder       step 5   checkpoints/encoder.pt, decoder.pt (gate checked)
-    python main.py train-world         step 6   checkpoints/predictor.pt
-    python main.py eval                steps 4, 7-9   probe sanity check, latent graph, planners,
-                                                      results/results.md + plots
+    python main.py collect             datasets/single_map/transitions.npz + splits.json
+    python main.py train-numerical     checkpoints/single_map/numerical.pt  (coordinate baseline)
+    python main.py train-encoder       checkpoints/single_map/encoder.pt, decoder.pt (gate checked)
+    python main.py train-world         checkpoints/single_map/predictor.pt
+    python main.py eval                probe check, imagined graph, planners -> results/single_map/
     python main.py fingerprint         hashes of every deterministic output, to compare two runs
 
-v2 (step 12, joint JEPA):  python main.py train-jepa --config config_v2.yaml  then  python main.py eval --config config_v2.yaml
-Multi-map (step 12, held-out layouts):  python main.py multimap --config config_multimap.yaml
-    then the joint JEPA on the same maps:  python main.py multimap-jepa --config config_multimap_jepa.yaml
+Joint JEPA on the single map (REPORT section 3):
+    python main.py train-jepa --config configs/single_map_jepa.yaml
+    python main.py eval --config configs/single_map_jepa.yaml
+Many maps (REPORT section 4):
+    python main.py multimap --config configs/multimap.yaml               (autoencoder baseline)
+    python main.py multimap-jepa --config configs/multimap_jepa.yaml     (joint JEPA, same maps)
 
-Every stage reads config.yaml (or --config) and its fixed seed. Each stage
-runs as its own process and the pipeline stops at the first failure (e.g. the
-encoder gate).
+Every stage reads its config (default configs/single_map.yaml) and its fixed seed.
+Each stage runs as its own process and the pipeline stops at the first failure
+(e.g. the encoder gate).
 """
 
 from __future__ import annotations
@@ -35,9 +38,9 @@ STAGES: dict[str, list[tuple[str, str]]] = {
     "train-numerical": [("training.train_numerical", "numerical (x, y, a) -> next (x, y) baseline")],
     "train-encoder": [("training.train_encoder", "autoencoder, gate, frozen encoder + codebook")],
     "train-world": [("training.train_world_model", "residual latent predictor")],
-    # v2 (step 12), not part of `all`: python main.py train-jepa --config config_v2.yaml, then eval with it
+    # joint JEPA on the single map, not part of `all`: python main.py train-jepa --config configs/single_map_jepa.yaml, then eval
     "train-jepa": [("training.train_jepa", "joint JEPA: online + EMA target encoder and predictor")],
-    # multi-map (step 12), not part of `all`: python main.py multimap --config config_multimap.yaml
+    # many maps, not part of `all`: python main.py multimap --config configs/multimap.yaml
     "multimap": [
         ("multimap.collect", "100 maps, split 70/15/15, random-action data"),
         ("multimap.train", "v1 autoencoder + predictor on the training maps"),
@@ -132,7 +135,7 @@ def fingerprint(config: Path | None) -> dict[str, str]:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("command", choices=[*ORDER, "train-jepa", "multimap", "multimap-jepa", "all", "fingerprint"])
-    parser.add_argument("--config", type=Path, default=None, help="config file (default: config.yaml)")
+    parser.add_argument("--config", type=Path, default=None, help="config file (default: configs/single_map.yaml)")
     args = parser.parse_args()
     config = args.config.resolve() if args.config else None
 

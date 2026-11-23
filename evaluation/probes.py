@@ -171,7 +171,7 @@ def run_sanity_checks(cfg: dict, data: dict, splits: dict) -> dict[str, dict]:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Sanity-check the linear position probe.")
-    parser.add_argument("--config", type=Path, default=None, help="config file (default: config.yaml)")
+    parser.add_argument("--config", type=Path, default=None, help="config file (default: configs/single_map.yaml)")
     args = parser.parse_args()
     cfg = load_config(args.config)
     data = load_transitions(resolve(cfg["data"]["path"]))

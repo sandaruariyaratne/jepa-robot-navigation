@@ -190,7 +190,7 @@ def main() -> None:
     from .true_model import TrueModel
 
     parser = argparse.ArgumentParser(description="Run P0, P1 and P2 from every start with the true and learned models.")
-    parser.add_argument("--config", type=Path, default=None, help="config file (default: config.yaml)")
+    parser.add_argument("--config", type=Path, default=None, help="config file (default: configs/single_map.yaml)")
     args = parser.parse_args()
     cfg = load_config(args.config)
     planners = make_planners(cfg)

@@ -14,7 +14,7 @@ from planning.imagination import WorldModel
 from planning.latent_graph import build_graph, goal_entry, steps_to_goal
 from planning.planner import P2, PlanContext
 
-CFG = load_config(ROOT / "config_multimap_jepa.yaml")
+CFG = load_config(ROOT / "configs/multimap_jepa.yaml")
 
 
 class Shift(torch.nn.Module):

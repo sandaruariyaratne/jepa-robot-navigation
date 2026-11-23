@@ -156,7 +156,7 @@ def print_report(metrics: dict) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Train the numerical (x, y, a) -> next (x, y) baseline.")
-    parser.add_argument("--config", type=Path, default=None, help="config file (default: config.yaml)")
+    parser.add_argument("--config", type=Path, default=None, help="config file (default: configs/single_map.yaml)")
     args = parser.parse_args()
     cfg = load_config(args.config)
     data = load_transitions(resolve(cfg["data"]["path"]))

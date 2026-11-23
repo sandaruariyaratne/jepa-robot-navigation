@@ -1,4 +1,4 @@
-"""Joint JEPA (v2) on the 70 training maps: `python -m multimap.train_jepa --config config_multimap_jepa.yaml`.
+"""Joint JEPA (v2) on the 70 training maps: `python -m multimap.train_jepa --config configs/multimap_jepa.yaml`.
 
 Same objective as training/train_jepa.py (online encoder + EMA target encoder +
 residual predictor, VICReg variance / covariance terms), same data, split,
@@ -180,12 +180,12 @@ def train(cfg: dict, data: dict, splits: dict, n_maps: int, verbose: bool = True
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Joint JEPA on the training maps.")
-    parser.add_argument("--config", type=Path, default=None, help="use config_multimap_jepa.yaml")
+    parser.add_argument("--config", type=Path, default=None, help="use configs/multimap_jepa.yaml")
     args = parser.parse_args()
     cfg = load_config(args.config)
     mm = cfg["multimap"]
     if "jepa" not in mm:
-        raise SystemExit("this config has no `multimap.jepa:` section; run with --config config_multimap_jepa.yaml")
+        raise SystemExit("this config has no `multimap.jepa:` section; run with --config configs/multimap_jepa.yaml")
     j = mm["jepa"]
     maps, splits = load_maps(resolve(mm["maps_path"]))
     data = load(resolve(mm["data_path"]))

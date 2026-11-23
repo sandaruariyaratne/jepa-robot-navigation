@@ -1,177 +1,148 @@
-# Mini-JEPA
+# Mini-JEPA: a robot that plans in its imagination
 
-A small action-conditioned latent world model for grid navigation: learn to
-predict in a learned latent space, imagine action sequences there, and plan
-with model-predictive control, all on a CPU in about ten minutes.
+A small **JEPA world model** (Joint-Embedding Predictive Architecture) that learns, from pixels
+alone, how its actions change what it sees, and then plans by imagining moves in its latent
+space. It never redraws a picture. Trained on 70 grid mazes, it finds its way through layouts
+it has never seen, and with fog of war it explores a map it cannot see.
 
+**[Try the live demo →](https://jepa-robot-navigation.vercel.app)** Draw walls, press Run and
+watch it think. It runs entirely in your browser; nothing is sent to a server.
+
+![The demo on a 6 × 5 map: the real map on the left, the robot's imagined graph on the right](docs/demo_6x5.png)
+
+*Left: the real map. Right: what the robot imagines. Each node is a place it predicts it can
+reach, labelled with its imagined number of steps to the goal. The purple path is the plan it
+chose out of 64 imagined futures.*
+
+## How it works
+
+```mermaid
+flowchart LR
+    F[Camera frame<br/>48×40 px] --> E[Encoder<br/>CNN]
+    E --> Z[Latent z<br/>64 numbers]
+    Z --> P[Predictor<br/>z, action → next z]
+    P --> G[Imagined graph<br/>snap each prediction<br/>to a known place]
+    G --> S[Planner<br/>score 64 three-move plans]
+    S -->|first move| W[World]
+    W -->|new frame| F
 ```
-RGB frame ──CNN encoder (frozen)──▶ z (32-D) ──predictor z + f(z, a)──▶ imagined z ──snap──▶ codebook cell
-                                                                     │
-                                       planner scores imagined rollouts, executes the first action, re-observes
-```
 
-Results and what they do and don't show: **[REPORT.md](REPORT.md)**. Full
-tables: [results/results.md](results/results.md).
+1. **See.** A CNN encoder turns each frame into a 64-number latent.
+2. **Imagine.** A predictor maps (latent, action) to the next latent. It is trained JEPA-style:
+   its prediction must match a slowly updated copy of the encoder applied to the real next
+   frame, with variance and covariance terms to stop the latents collapsing. There is no
+   decoder and no pixel loss.
+3. **Plan.** Every imagined step is snapped to the nearest known place, so the predictions form
+   a graph. The planner scores all 64 three-move sequences by imagined steps to the goal,
+   makes the first move, looks again and replans.
 
-## Setup
+## Results
 
-Python 3.10+. From the project folder:
+All numbers are on maps never used for training or for choosing settings. Every setting was
+chosen on separate validation maps, and each test set was run once.
 
-```
+| Experiment | What the robot is given | Reaches the goal |
+|---|---|---|
+| 1,200 new 6 × 5 layouts, mazes included | a picture of itself on every free cell | **100%** (shortest path 100%) |
+| Same networks, trained to redraw pixels instead (mazes) | the same | 79% |
+| New 6 × 5 mazes | only the start and goal pictures, then what it sees while walking | 83% (94% with a larger move budget) |
+| New 10 × 10 maps, **fog of war** (3 × 3 view) | start and goal pictures, then what it sees | **100%** |
+| New 10 × 10 mazes, fog of war | the same | **97.8%** |
+| New 10 × 10 mazes, fog of war | imagination only, no correction while walking | 14% |
+
+![Fog of war on a 10 × 10 map: the robot sees only its 3 × 3 neighbourhood and explores](docs/demo_fog.png)
+
+*Fog of war: the robot sees only the 3 × 3 cells around it (lit). On the right, the places it
+has really seen (dark) sit among many imagined ones; red marks imagined moves that are wrong.
+It replaces them with what it actually experiences as it walks.*
+
+What worked, what didn't, and why, with every number traced to a results file:
+**[REPORT.md](REPORT.md)**.
+
+## Quick start
+
+Python 3.10+ and a CPU are enough.
+
+```bash
 python -m venv .venv
 .venv/bin/python -m pip install -r requirements.txt
+.venv/bin/python -m pytest -q                 # 198 tests, about a minute
 ```
 
-`requirements.txt` pins minimum versions of numpy, PyYAML, torch (CPU is enough),
-pytest, pygame and matplotlib. pygame and matplotlib are only needed for the
-viewer, dashboard and plots.
+Trained checkpoints, datasets and results are in the repo, so every evaluation below runs
+without retraining.
 
-## Run everything
+**Run the demo locally** (plain JavaScript, no build step):
 
-```
-.venv/bin/python main.py all
-```
-
-| Command | What it does | Writes |
-|---|---|---|
-| `main.py collect` | 200 random episodes × 50 steps, episode split, held-out pairs | `data/transitions.npz`, `data/splits.json` |
-| `main.py train-numerical` | (x, y, action) → next (x, y) baseline | `checkpoints/numerical.pt` |
-| `main.py train-encoder` | autoencoder; gate: probe ≥ 99% and 25/25 decodes, else retrain with robot pixels × 10 | `checkpoints/encoder.pt`, `decoder.pt`, `encoder_decodes.png` |
-| `main.py train-world` | residual latent predictor, rollout curriculum | `checkpoints/predictor.pt` |
-| `main.py eval` | probe sanity check, imagined graph, planners, full evaluation and ladder | `checkpoints/latent_graph.png`, `results/` |
-| `main.py fingerprint` | hashes of all deterministic outputs, to compare two runs | – |
-
-Every stage reads [config.yaml](config.yaml) (`--config other.yaml` to use
-another) and its fixed seed; re-running gives the same data, checkpoints and
-results. Each stage can also be run on its own, e.g.
-`python -m training.train_encoder`.
-
-### v2: joint JEPA (step 12, experiment 1)
-
-```
-.venv/bin/python main.py train-jepa --config config_v2.yaml    # ~1 min -> checkpoints_v2/
-.venv/bin/python main.py eval --config config_v2.yaml          # -> results_v2/
-.venv/bin/python -m training.train_jepa --config config_v2.yaml --ablate-latent-dim 2,4,8,16,32
-```
-
-[config_v2.yaml](config_v2.yaml) extends config.yaml and only swaps the encoder
-and predictor for jointly trained ones (EMA target encoder, variance /
-covariance penalties). Its checkpoints use the v1 formats, so the graph,
-planners, evaluation and dashboard (`--config config_v2.yaml`) work unchanged.
-Findings: [REPORT.md §7](REPORT.md#7-v2-experiment-1-joint-jepa-training).
-
-### Multi-map: held-out layouts (step 12)
-
-```
-.venv/bin/python main.py multimap --config config_multimap.yaml              # 100 maps, v1 -> results_multimap/
-.venv/bin/python main.py multimap-jepa --config config_multimap_jepa.yaml    # same maps, joint JEPA (~11 min)
-.venv/bin/python -m multimap.new_maps --config config_multimap_jepa.yaml                  # 500 new layouts
-.venv/bin/python -m multimap.new_maps --set hard_maps --config config_multimap_jepa.yaml  # 500, 8-14 walls
-.venv/bin/python -m multimap.new_maps --set maze_maps --config config_multimap_jepa.yaml  # 200 mazes
-.venv/bin/python -m multimap.calibrate --config config_multimap_jepa.yaml    # unknown threshold from validation maps
-.venv/bin/python -m multimap.new_maps --set maze_maps --threshold calibrated --planner snap --config config_multimap_jepa.yaml
-.venv/bin/python -m multimap.step3 train && .venv/bin/python -m multimap.step3 eval && .venv/bin/python -m multimap.step3 summary
-.venv/bin/python -m multimap.explore --set maze_maps     # no picture of every cell: imagine (A) / explore (B)
-```
-
-100 random layouts split 70 / 15 / 15 by map; each map snaps to its own
-codebook. The stress tests load the trained models and never retrain; add
-`--threshold calibrated` to use the validation-calibrated unknown threshold and
-`--planner snap` to snap every imagined step to the codebook (100% on all
-1,200 stress-test layouts). `multimap.step3` trains and compares JEPA, an
-end-to-end pixel world model and two ablations over several seeds
-(`results_step3/summary.md`; the pixel baseline takes ~1 h per seed).
-`multimap.explore` drops the privileged picture of every cell: the robot
-imagines the map from the start and goal pictures (A), or also corrects it
-with what it sees while walking (B; `--budget explorer` for 60 moves, no loop rule).
-Findings: [REPORT.md §8–11](REPORT.md#8-multi-map-experiments-held-out-layouts).
-
-### Level C: fog of war, 10 × 10
-
-```
-.venv/bin/python -m multimap.collect --config config_fog.yaml        # 100 fogged 10 x 10 maps -> data_fog/
-.venv/bin/python -m multimap.train_jepa --config config_fog.yaml     # ~1.5 h on a laptop CPU
-.venv/bin/python -m multimap.calibrate --config config_fog.yaml      # single threshold (every-cell pictures)
-# validation sets first (the test sets exclude them); each builds its maps on first use
-.venv/bin/python -m multimap.explore --config config_fog.yaml --set val_fog_maps  --modes privileged,imagine,explore,oracle --budget explorer --workers 7
-.venv/bin/python -m multimap.explore --config config_fog.yaml --set val_fog_mazes --modes privileged,imagine,explore,oracle --budget explorer --workers 7
-.venv/bin/python -m multimap.explore --config config_fog.yaml --set fog_maps  --modes privileged,imagine,explore,oracle --budget explorer --workers 7 --name explore_fog_maps_explorer
-.venv/bin/python -m multimap.explore --config config_fog.yaml --set fog_mazes --modes privileged,imagine,explore,oracle --budget explorer --workers 7 --name explore_fog_mazes_explorer
-```
-
-The robot sees only the 3 × 3 cells around itself; the rest of the frame is fog.
-Imagined maps use separate stay / merge thresholds, computed on first use into
-`checkpoints_fog/fog_thresholds.json`. `oracle` is a model-free explorer that knows
-the true walls once it has seen them. `--workers` splits the maps over processes;
-the counts are identical to one process. Findings: [REPORT.md §12](REPORT.md#12-level-c-fog-of-war-on-a-10--10-grid).
-
-### Interactive web demo
-
-[web/](web/) runs the trained multi-map models in the browser: drag walls to build a map,
-and the robot plans with the joint JEPA from the rendered pixels. A switch chooses what it gets:
-a picture of every cell, only the start and goal pictures (imagination only), or those
-plus what it sees while walking (imagine + explore), as in REPORT.md §11. A second switch picks the
-world: the 6 × 5 grid, or the 10 × 10 fog-of-war grid with its own model (REPORT.md §12). Plain
-JavaScript, no build step and no server (about 3 MB of weights for both models).
-
-```
-.venv/bin/python web/export_models.py          # weights + test vectors from the checkpoints
-node web/test/check.mjs                        # JS port vs PyTorch: frames, graph, D(c) exact
-node web/test/check.mjs --bench                # JS planner on the benchmark maps vs the Python numbers
-node web/test/explore_bench.mjs maze_maps 50    # JS imagination-only / explore modes vs multimap.explore
-node web/test/explore_bench.mjs fog_maps 20     # the same on the fog-of-war test maps (their start cells)
+```bash
 cd web && python -m http.server 8765           # open http://127.0.0.1:8765
 ```
 
-## Look at it
+## Reproducing the experiments
 
-```
-.venv/bin/python -m environment.viewer                                   # play the grid yourself (pygame)
-.venv/bin/python -m visualization.dashboard --run P2 --start 0,4         # replay any evaluation episode
-.venv/bin/python -m visualization.dashboard --run P0 --episodes          # list a run's 120 episodes
-.venv/bin/python -m visualization.dashboard --run P0 --start 0,1 --export out/   # PNG per step + GIF
-```
+Each experiment has one config in [configs/](configs/); its data, checkpoints and results live in
+matching folders (`datasets/<name>/`, `checkpoints/<name>/`, `results/<name>/`).
 
-Dashboard runs: `Oracle`, `P0`, `P1`, `P2`, `Random` and the ladder rungs `D1`,
-`D2`, `D3`, `Full`. Keys: ←/→ step, Home/End, Space play, q quit.
+| Config | Experiment | Report | Main commands | CPU time |
+|---|---|---|---|---|
+| `single_map` | One fixed map: fit vs generalization | §2 | `python main.py all` | ~10 min |
+| `single_map_jepa` | Joint JEPA training on one map | §3 | `python main.py train-jepa --config configs/single_map_jepa.yaml`, then `eval` | ~1 min |
+| `multimap` | 100 maps, autoencoder baseline | §4 | `python main.py multimap --config configs/multimap.yaml` | not recorded |
+| `multimap_jepa` | 100 maps, joint JEPA; stress tests, graph planning | §4–5 | `python main.py multimap-jepa --config configs/multimap_jepa.yaml`, then `python -m multimap.new_maps --set maze_maps --threshold calibrated --planner snap --config configs/multimap_jepa.yaml` | ~13 min + eval |
+| *(baselines)* | Pixel world model and ablations, several seeds | §6 | `python -m multimap.step3 train`, `eval`, `summary` | ~1 h per pixel seed |
+| `multimap_jepa` | Without the every-cell pictures: imagine / explore | §7 | `python -m multimap.explore --set maze_maps` | ~6 min |
+| `fog` | Fog of war on a 10 × 10 grid | §8 | see below | ~1.5 h training |
 
-Also produced: `checkpoints/latent_graph.png` (the imagined graph, laid out by
-steps-to-goal), `checkpoints/encoder_decodes.png`, and three plots in
-`results/`.
+Fog of war, in order (validation first; the test sets exclude the validation maps):
 
-## Layout
-
-```
-environment/    grid world, renderer, BFS oracle, pygame viewer
-data/           collection, episode split + held-out pairs, datasets (single steps or K-step windows)
-models/         numerical baseline, encoder, decoder, residual predictor
-training/       train_numerical, train_encoder (with gate), train_world_model, train_jepa (v2)
-evaluation/     linear probe, metrics, prediction accuracy, navigation, ladder, plots, `python -m evaluation`
-web/            browser demo: JS port of renderer, networks, imagined graph and P2 (checked against PyTorch)
-multimap/       many-layout experiment: maps, collection, v1 and JEPA training, evaluation, stress tests, calibration
-planning/       imagination (no simulator calls), latent graph + D(c), true-model wrapper, P0/P1/P2, MPC loop
-visualization/  replay dashboard
-tests/          pytest suite (one file per step)
-main.py         pipeline entry point
-config.yaml     every setting and the seed (config_v2.yaml, config_multimap*.yaml, config_fog.yaml extend it)
+```bash
+python -m multimap.collect     --config configs/fog.yaml
+python -m multimap.train_jepa  --config configs/fog.yaml
+python -m multimap.calibrate   --config configs/fog.yaml
+python -m multimap.explore --config configs/fog.yaml --set val_fog_maps --modes privileged,imagine,explore,oracle --budget explorer --workers 7
+python -m multimap.explore --config configs/fog.yaml --set fog_maps     --modes privileged,imagine,explore,oracle --budget explorer --workers 7
 ```
 
-## Tests
+`--workers N` splits the maps over processes; the counts are identical to one process. Use
+`.venv/bin/python` (or an activated environment) for every command.
+
+**Web demo.** `python web/export_models.py` re-exports the weights and test vectors from the
+checkpoints. `node web/test/check.mjs` checks the JavaScript port against PyTorch: frames,
+latents, imagined graphs and plans must match on 10 layouts. `node web/test/explore_bench.mjs
+fog_maps 20` compares the browser planner's navigation with the Python results.
+
+**Look inside.** `python -m environment.viewer` lets you play the grid yourself.
+`python -m visualization.dashboard --run P2 --start 0,4` replays any single-map evaluation
+episode step by step.
+
+## Repository layout
 
 ```
-.venv/bin/python -m pytest -q
+configs/         one YAML per experiment (each extends single_map.yaml)
+environment/     grid world, renderer (with fog of war), BFS oracle, pygame viewer
+data/            data collection, episode split, held-out pairs, datasets (code)
+models/          encoder, decoder, residual predictor, coordinate baseline
+training/        single-map training: autoencoder, predictor, joint JEPA
+planning/        imagination, imagined graph and steps-to-goal, planners, MPC loop
+evaluation/      probes, prediction accuracy, navigation, diagnostic ladder, plots
+multimap/        many-map experiments: maps, training, stress tests, calibration, baselines, explore
+visualization/   episode replay dashboard
+web/             browser demo: JavaScript port of the renderer, networks and planner
+tests/           pytest suite
+datasets/  checkpoints/  results/    generated data, trained models and result tables, one folder per experiment
+docs/            images for this README
 ```
-
-About a minute. Tests that need trained checkpoints skip themselves if those
-are missing.
 
 ## Rules the code keeps
 
-- Models never read the simulator's rules; true positions are used only for
-  probes, splitting and evaluation. Imagination code does not import the
-  simulator, and a test runs it with every simulator entry point disabled.
-- Encoder, standardisation statistics and probes are fit on the training split
-  only. Held-out pairs are excluded from predictor training and from checkpoint
-  selection.
-- Fit (episode split) and generalization (held-out pairs) are reported
-  separately.
+- **Models never read the simulator's rules.** True positions are used only for probes,
+  splitting and scoring. Imagination code does not import the simulator, and a test runs it
+  with every simulator entry point disabled.
+- **No test data leaks into choices.** Encoders, normalisation statistics and probes are fit on
+  training data only. Checkpoints and thresholds are chosen on validation maps, and test maps
+  are used once.
+- **Fit and generalization are reported separately**, so that memorising the training maps
+  can't pass as learning.
+
+Comments in the code that cite "spec" or "build plan step N" refer to the original design
+documents, which are not part of this repository.

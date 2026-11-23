@@ -1,7 +1,7 @@
-# Multi-map experiment with the joint JEPA (v2) instead of the v1 autoencoder + predictor.
-# Same 100 maps, 70 / 15 / 15 split, data and evaluation as config_multimap.yaml.
-#   python main.py multimap-jepa --config config_multimap_jepa.yaml        (train -> evaluate; reuses the data)
-extends: config_multimap.yaml
+# Many maps (REPORT sections 4-7) with the joint JEPA instead of the autoencoder baseline.
+# Same 100 maps, 70 / 15 / 15 split, data and evaluation as configs/multimap.yaml.
+#   python main.py multimap-jepa --config configs/multimap_jepa.yaml        (train -> evaluate; reuses the data)
+extends: multimap.yaml
 
 multimap:
   label: joint JEPA (v2)
@@ -21,11 +21,11 @@ multimap:
     pred_weight: 1.0
     var_weight: 1.0
     cov_weight: 0.04
-    metrics: checkpoints_multimap_jepa/jepa_metrics.json
+    metrics: checkpoints/multimap_jepa/jepa_metrics.json
 
   encoder:
-    checkpoint: checkpoints_multimap_jepa/encoder.pt   # EMA target encoder, frozen (no decoder)
+    checkpoint: checkpoints/multimap_jepa/encoder.pt   # EMA target encoder, frozen (no decoder)
   predictor:
-    checkpoint: checkpoints_multimap_jepa/predictor.pt
+    checkpoint: checkpoints/multimap_jepa/predictor.pt
   evaluation:
-    results_dir: results_multimap_jepa
+    results_dir: results/multimap_jepa

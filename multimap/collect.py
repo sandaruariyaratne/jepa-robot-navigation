@@ -1,4 +1,4 @@
-"""Collect random-action data on every map: `python -m multimap.collect --config config_multimap.yaml`.
+"""Collect random-action data on every map: `python -m multimap.collect --config configs/multimap.yaml`.
 
 Each map has only ~25 distinct frames (the robot on each free cell), so frames
 are stored once in a table and transitions refer to them by index:

@@ -1,10 +1,11 @@
-# Mini-JEPA settings (spec v1.1). Every script reads its settings from here.
+# One fixed 6 x 5 map (REPORT section 2): autoencoder + residual predictor. The default config;
+# the others extend it.
 # Paths are relative to the project root.
 seed: 0
 
 data:
-  path: data/transitions.npz        # every collected transition, one file
-  splits_path: data/splits.json     # episode split + held-out (state, action) pairs
+  path: datasets/single_map/transitions.npz        # every collected transition, one file
+  splits_path: datasets/single_map/splits.json     # episode split + held-out (state, action) pairs
   episodes: 200
   steps_per_episode: 50             # random actions per episode -> 10,000 transitions
   terminate_on_goal: false          # keep going through the goal so its transitions are recorded
@@ -19,8 +20,8 @@ numerical:
   lr: 0.001
   batch_size: 64
   epochs: 50
-  checkpoint: checkpoints/numerical.pt
-  metrics: checkpoints/numerical_metrics.json
+  checkpoint: checkpoints/single_map/numerical.pt
+  metrics: checkpoints/single_map/numerical_metrics.json
 
 # Step 4: linear probe, latent vector -> which of the 25 free cells the robot is in.
 # Fit on the training split only (full-batch softmax regression on standardised features).
@@ -39,10 +40,10 @@ encoder:
   robot_weight: 1.0             # first attempt: plain pixel MSE
   fallback_robot_weight: 10.0
   gate_probe_accuracy: 0.99     # linear probe on validation latents
-  checkpoint: checkpoints/encoder.pt          # frozen encoder + latent mu / sigma + codebook
-  decoder_checkpoint: checkpoints/decoder.pt  # for visualising imagined states only
-  metrics: checkpoints/encoder_metrics.json
-  decodes_png: checkpoints/encoder_decodes.png
+  checkpoint: checkpoints/single_map/encoder.pt          # frozen encoder + latent mu / sigma + codebook
+  decoder_checkpoint: checkpoints/single_map/decoder.pt  # for visualising imagined states only
+  metrics: checkpoints/single_map/encoder_metrics.json
+  decodes_png: checkpoints/single_map/encoder_decodes.png
 
 # Step 6 / Stage 2: residual latent predictor z_hat = z + f(z, a) on frozen, standardised latents.
 predictor:
@@ -54,13 +55,13 @@ predictor:
   curriculum: [[1, 1], [11, 2], [21, 4]]   # [from epoch, rollout length K]
   select_horizon: 5                  # pick the epoch with the best val snap accuracy at this many steps
   eval_horizon: 10                   # report snap accuracy at 1..10 steps
-  checkpoint: checkpoints/predictor.pt
-  metrics: checkpoints/predictor_metrics.json
+  checkpoint: checkpoints/single_map/predictor.pt
+  metrics: checkpoints/single_map/predictor_metrics.json
 
 # Step 7: imagination and the latent graph (no simulator calls).
 imagination:
   unknown_factor: 3.0        # a snap is "unknown" if farther than this x the median one-step error
-  metrics: checkpoints/graph_metrics.json
+  metrics: checkpoints/single_map/graph_metrics.json
 
 # Step 8: planners sharing one MPC loop (execute the first action, re-observe, replan).
 planning:
@@ -70,10 +71,10 @@ planning:
   p0: {horizon: 5}                    # all 1,024 sequences, cost = final latent distance (ablation)
   p1: {horizon: 12, beam_width: 64}   # beam search, cost = closest latent distance along the way
   p2: {horizon: 3}                    # all 64 sequences, cost = min_k [k + D(snap(z_k))] (primary)
-  metrics: checkpoints/planning_metrics.json
+  metrics: checkpoints/single_map/planning_metrics.json
 
 # Step 9: evaluation and diagnostic ladder. `python -m evaluation` regenerates everything.
 evaluation:
   seeds: [0, 1, 2, 3, 4]     # 24 starts x 5 seeds = 120 episodes per planner / rung
   horizon: 10                # model metrics at 1..10 imagined steps
-  results_dir: results       # results.md, results.json and the plots
+  results_dir: results/single_map       # results.md, results.json and the plots

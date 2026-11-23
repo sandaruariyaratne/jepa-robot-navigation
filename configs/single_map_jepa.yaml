@@ -1,8 +1,8 @@
-# v2 experiment 1 (build plan step 12): joint JEPA training.
+# Joint JEPA training on the single map (REPORT section 3).
 # Same data, splits, planners and evaluation as v1; only the encoder + predictor change.
-#   python main.py train-jepa --config config_v2.yaml
-#   python main.py eval --config config_v2.yaml
-extends: config.yaml
+#   python main.py train-jepa --config configs/single_map_jepa.yaml
+#   python main.py eval --config configs/single_map_jepa.yaml
+extends: single_map.yaml
 
 jepa:
   latent_dim: 32
@@ -17,18 +17,18 @@ jepa:
   pred_weight: 1.0                 # || P(E(x_t), a) - E_target(x_t+1) ||^2
   var_weight: 1.0                  # hinge keeping each latent dimension's std >= 1 (anti-collapse)
   cov_weight: 0.04                 # off-diagonal covariance (decorrelates dimensions), VICReg 25:25:1 ratio
-  metrics: checkpoints_v2/jepa_metrics.json
+  metrics: checkpoints/single_map_jepa/jepa_metrics.json
 
 # v2 checkpoints in the v1 formats, so imagination / planning / evaluation run unchanged.
 encoder:
-  checkpoint: checkpoints_v2/encoder.pt              # the EMA target encoder, frozen, + codebook
-  decoder_checkpoint: checkpoints_v2/decoder.pt      # none: JEPA has no decoder (dashboard shows no decodes)
+  checkpoint: checkpoints/single_map_jepa/encoder.pt              # the EMA target encoder, frozen, + codebook
+  decoder_checkpoint: checkpoints/single_map_jepa/decoder.pt      # none: JEPA has no decoder (dashboard shows no decodes)
 predictor:
-  checkpoint: checkpoints_v2/predictor.pt
-  metrics: checkpoints_v2/predictor_metrics.json
+  checkpoint: checkpoints/single_map_jepa/predictor.pt
+  metrics: checkpoints/single_map_jepa/predictor_metrics.json
 imagination:
-  metrics: checkpoints_v2/graph_metrics.json
+  metrics: checkpoints/single_map_jepa/graph_metrics.json
 planning:
-  metrics: checkpoints_v2/planning_metrics.json
+  metrics: checkpoints/single_map_jepa/planning_metrics.json
 evaluation:
-  results_dir: results_v2
+  results_dir: results/single_map_jepa

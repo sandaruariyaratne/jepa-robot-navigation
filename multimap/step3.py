@@ -17,7 +17,7 @@ selection on validation-map snap@5; only the training objective changes):
 Every model is evaluated the same way, on the 15 held-out test maps and the 200 maze maps, with two
 planner settings: "p2" (raw rollouts, unknown = 3 x median one-step error; as in all earlier results)
 and "snap" (every imagined step snapped, unknown = 99.9% quantile of correct one-step snap distances on
-the validation maps). Checkpoints: checkpoints_step3/<variant>_s<seed>/; results: results_step3/.
+the validation maps). Checkpoints: checkpoints/baselines/<variant>_s<seed>/; results: results/baselines/.
 """
 
 from __future__ import annotations
@@ -43,8 +43,8 @@ from .maps import load_maps
 from .new_maps import chunked_metrics, complete_frames, new_maps_and_data
 from .train import codebooks, latent_table
 
-BASE = ROOT / "config_multimap_jepa.yaml"
-CKPT, RESULTS = ROOT / "checkpoints_step3", ROOT / "results_step3"
+BASE = ROOT / "configs/multimap_jepa.yaml"
+CKPT, RESULTS = ROOT / "checkpoints/baselines", ROOT / "results/baselines"
 VARIANTS = {
     "jepa": {},
     "pixel": {"objective": "pixel", "windows_per_step": 128},
@@ -80,7 +80,7 @@ def train_one(variant: str, seed: int) -> None:
         src = resolve(load_config(BASE)["multimap"]["encoder"]["checkpoint"]).parent
         for f, g in (("encoder.pt", "encoder.pt"), ("predictor.pt", "predictor.pt"), ("jepa_metrics.json", "train_metrics.json")):
             shutil.copy(src / f, d / g)
-        print("jepa seed 0: copied from checkpoints_multimap_jepa/ (same config and seed)")
+        print("jepa seed 0: copied from checkpoints/multimap_jepa/ (same config and seed)")
         return
     maps, splits = load_maps(resolve(mm["maps_path"]))
     data = load(resolve(mm["data_path"]))

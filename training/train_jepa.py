@@ -1,6 +1,6 @@
 """v2 experiment 1: joint JEPA training (build plan step 12).
 
-    python main.py train-jepa --config config_v2.yaml
+    python main.py train-jepa --config configs/single_map_jepa.yaml
 
 v1 froze a pixel autoencoder and then fit a predictor on top; its latents had
 no grid geometry, and held-out (state, action) pairs scored 1/10. Here the
@@ -266,13 +266,13 @@ def ablate_latent_dim(cfg: dict, data: dict, splits: dict, dims: list[int]) -> l
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Joint JEPA training (v2 experiment 1).")
-    parser.add_argument("--config", type=Path, default=None, help="config file (use config_v2.yaml)")
+    parser.add_argument("--config", type=Path, default=None, help="config file (use configs/single_map_jepa.yaml)")
     parser.add_argument("--ablate-latent-dim", default=None, metavar="2,4,8",
                         help="instead of training the main model, compare these latent sizes (nothing saved but a JSON)")
     args = parser.parse_args()
     cfg = load_config(args.config)
     if "jepa" not in cfg:
-        raise SystemExit("this config has no `jepa:` section; run with --config config_v2.yaml")
+        raise SystemExit("this config has no `jepa:` section; run with --config configs/single_map_jepa.yaml")
     j = cfg["jepa"]
     data = load_transitions(resolve(cfg["data"]["path"]))
     splits = load_splits(resolve(cfg["data"]["splits_path"]))
