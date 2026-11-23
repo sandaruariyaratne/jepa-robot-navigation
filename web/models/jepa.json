@@ -9,12 +9,15 @@
  "n_actions": 4,
  "median_one_step_error": 1.4151430130004883,
  "unknown_factor": 3.0,
- "unknown_threshold": 4.245429039001465,
+ "default_threshold": 4.245429039001465,
+ "unknown_threshold": 7.046285629272461,
+ "unknown_rule": "99.9% quantile of correct one-step snap distances, validation maps",
  "planning": {
   "horizon": 3,
   "max_actions": 30,
   "max_visits": 3,
-  "revisit_penalty": 0.5
+  "revisit_penalty": 0.5,
+  "snap_each_step": true
  },
  "trained_on": {
   "maps": 70,

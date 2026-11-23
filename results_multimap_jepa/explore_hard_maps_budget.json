@@ -1,0 +1,135 @@
+{
+ "set": "hard_maps",
+ "title": "dense-wall maps (8-14 walls)",
+ "n_maps": 500,
+ "threshold": 7.046285629272461,
+ "max_nodes": 60,
+ "modes": [
+  "explore"
+ ],
+ "navigation": {
+  "explore": {
+   "episodes": 19680,
+   "success": 19611,
+   "optimal": 16831,
+   "loops": 0,
+   "steps": 126302,
+   "collisions": 1931,
+   "rebuilds": 95506,
+   "fallback_plans": 5600,
+   "frontier_plans": 11543,
+   "extra_steps": 16055
+  }
+ },
+ "first_map_quality": {
+  "explore": {
+   "maps": 9840,
+   "exact": 4,
+   "nodes": 208058,
+   "cells": 204616,
+   "covered": 173085,
+   "duplicates": 3269,
+   "spurious": 31704,
+   "edges": 705416,
+   "edges_correct": 613938,
+   "overflow": 0,
+   "d_start_exact": 8161,
+   "d_start_unreachable": 523
+  }
+ },
+ "by_path_length": {
+  "explore": {
+   "1": {
+    "episodes": 1492,
+    "success": 1492,
+    "optimal": 1492
+   },
+   "2": {
+    "episodes": 1768,
+    "success": 1768,
+    "optimal": 1768
+   },
+   "3": {
+    "episodes": 2040,
+    "success": 2040,
+    "optimal": 2027
+   },
+   "4": {
+    "episodes": 2418,
+    "success": 2414,
+    "optimal": 2295
+   },
+   "5": {
+    "episodes": 2582,
+    "success": 2578,
+    "optimal": 2414
+   },
+   "6": {
+    "episodes": 2556,
+    "success": 2551,
+    "optimal": 2223
+   },
+   "7": {
+    "episodes": 2316,
+    "success": 2308,
+    "optimal": 1846
+   },
+   "8": {
+    "episodes": 1912,
+    "success": 1903,
+    "optimal": 1335
+   },
+   "9": {
+    "episodes": 1256,
+    "success": 1246,
+    "optimal": 777
+   },
+   "10": {
+    "episodes": 578,
+    "success": 574,
+    "optimal": 298
+   },
+   "11": {
+    "episodes": 366,
+    "success": 357,
+    "optimal": 189
+   },
+   "12": {
+    "episodes": 212,
+    "success": 207,
+    "optimal": 90
+   },
+   "13": {
+    "episodes": 106,
+    "success": 103,
+    "optimal": 37
+   },
+   "14": {
+    "episodes": 46,
+    "success": 42,
+    "optimal": 25
+   },
+   "15": {
+    "episodes": 20,
+    "success": 18,
+    "optimal": 9
+   },
+   "16": {
+    "episodes": 6,
+    "success": 5,
+    "optimal": 2
+   },
+   "17": {
+    "episodes": 6,
+    "success": 5,
+    "optimal": 4
+   }
+  }
+ },
+ "seconds": 441,
+ "budget": {
+  "name": "explorer",
+  "max_actions": 60,
+  "max_visits": 1000000
+ }
+}

@@ -1,0 +1,364 @@
+{
+ "set": "maze_maps",
+ "title": "maze maps (8-14 walls, longest paths)",
+ "n_maps": 200,
+ "threshold": 7.046285629272461,
+ "max_nodes": 60,
+ "modes": [
+  "privileged",
+  "imagine",
+  "explore"
+ ],
+ "navigation": {
+  "privileged": {
+   "episodes": 8048,
+   "success": 8048,
+   "optimal": 8048,
+   "loops": 0,
+   "steps": 68348,
+   "collisions": 0,
+   "rebuilds": 0,
+   "fallback_plans": 0,
+   "frontier_plans": 0,
+   "extra_steps": 0
+  },
+  "imagine": {
+   "episodes": 8048,
+   "success": 3266,
+   "optimal": 3087,
+   "loops": 4782,
+   "steps": 39979,
+   "collisions": 9606,
+   "rebuilds": 0,
+   "fallback_plans": 10107,
+   "frontier_plans": 0,
+   "extra_steps": 197
+  },
+  "explore": {
+   "episodes": 8048,
+   "success": 6659,
+   "optimal": 4495,
+   "loops": 1386,
+   "steps": 85564,
+   "collisions": 803,
+   "rebuilds": 67077,
+   "fallback_plans": 1746,
+   "frontier_plans": 28196,
+   "extra_steps": 12465
+  }
+ },
+ "first_map_quality": {
+  "imagine": {
+   "maps": 4024,
+   "exact": 0,
+   "nodes": 77148,
+   "cells": 85182,
+   "covered": 64185,
+   "duplicates": 1325,
+   "spurious": 11638,
+   "edges": 262040,
+   "edges_correct": 224442,
+   "overflow": 0,
+   "d_start_exact": 1899,
+   "d_start_unreachable": 805
+  },
+  "explore": {
+   "maps": 4024,
+   "exact": 0,
+   "nodes": 77148,
+   "cells": 85182,
+   "covered": 64185,
+   "duplicates": 1325,
+   "spurious": 11638,
+   "edges": 262040,
+   "edges_correct": 224442,
+   "overflow": 0,
+   "d_start_exact": 1899,
+   "d_start_unreachable": 805
+  }
+ },
+ "by_path_length": {
+  "privileged": {
+   "1": {
+    "episodes": 442,
+    "success": 442,
+    "optimal": 442
+   },
+   "2": {
+    "episodes": 466,
+    "success": 466,
+    "optimal": 466
+   },
+   "3": {
+    "episodes": 480,
+    "success": 480,
+    "optimal": 480
+   },
+   "4": {
+    "episodes": 508,
+    "success": 508,
+    "optimal": 508
+   },
+   "5": {
+    "episodes": 474,
+    "success": 474,
+    "optimal": 474
+   },
+   "6": {
+    "episodes": 462,
+    "success": 462,
+    "optimal": 462
+   },
+   "7": {
+    "episodes": 466,
+    "success": 466,
+    "optimal": 466
+   },
+   "8": {
+    "episodes": 496,
+    "success": 496,
+    "optimal": 496
+   },
+   "9": {
+    "episodes": 576,
+    "success": 576,
+    "optimal": 576
+   },
+   "10": {
+    "episodes": 578,
+    "success": 578,
+    "optimal": 578
+   },
+   "11": {
+    "episodes": 666,
+    "success": 666,
+    "optimal": 666
+   },
+   "12": {
+    "episodes": 694,
+    "success": 694,
+    "optimal": 694
+   },
+   "13": {
+    "episodes": 678,
+    "success": 678,
+    "optimal": 678
+   },
+   "14": {
+    "episodes": 514,
+    "success": 514,
+    "optimal": 514
+   },
+   "15": {
+    "episodes": 330,
+    "success": 330,
+    "optimal": 330
+   },
+   "16": {
+    "episodes": 164,
+    "success": 164,
+    "optimal": 164
+   },
+   "17": {
+    "episodes": 44,
+    "success": 44,
+    "optimal": 44
+   },
+   "18": {
+    "episodes": 10,
+    "success": 10,
+    "optimal": 10
+   }
+  },
+  "imagine": {
+   "1": {
+    "episodes": 442,
+    "success": 442,
+    "optimal": 442
+   },
+   "2": {
+    "episodes": 466,
+    "success": 466,
+    "optimal": 466
+   },
+   "3": {
+    "episodes": 480,
+    "success": 473,
+    "optimal": 465
+   },
+   "4": {
+    "episodes": 508,
+    "success": 467,
+    "optimal": 450
+   },
+   "5": {
+    "episodes": 474,
+    "success": 378,
+    "optimal": 359
+   },
+   "6": {
+    "episodes": 462,
+    "success": 283,
+    "optimal": 261
+   },
+   "7": {
+    "episodes": 466,
+    "success": 249,
+    "optimal": 229
+   },
+   "8": {
+    "episodes": 496,
+    "success": 162,
+    "optimal": 139
+   },
+   "9": {
+    "episodes": 576,
+    "success": 138,
+    "optimal": 126
+   },
+   "10": {
+    "episodes": 578,
+    "success": 74,
+    "optimal": 64
+   },
+   "11": {
+    "episodes": 666,
+    "success": 60,
+    "optimal": 37
+   },
+   "12": {
+    "episodes": 694,
+    "success": 35,
+    "optimal": 23
+   },
+   "13": {
+    "episodes": 678,
+    "success": 20,
+    "optimal": 14
+   },
+   "14": {
+    "episodes": 514,
+    "success": 9,
+    "optimal": 5
+   },
+   "15": {
+    "episodes": 330,
+    "success": 4,
+    "optimal": 2
+   },
+   "16": {
+    "episodes": 164,
+    "success": 4,
+    "optimal": 4
+   },
+   "17": {
+    "episodes": 44,
+    "success": 2,
+    "optimal": 1
+   },
+   "18": {
+    "episodes": 10,
+    "success": 0,
+    "optimal": 0
+   }
+  },
+  "explore": {
+   "1": {
+    "episodes": 442,
+    "success": 442,
+    "optimal": 442
+   },
+   "2": {
+    "episodes": 466,
+    "success": 466,
+    "optimal": 466
+   },
+   "3": {
+    "episodes": 480,
+    "success": 480,
+    "optimal": 476
+   },
+   "4": {
+    "episodes": 508,
+    "success": 498,
+    "optimal": 494
+   },
+   "5": {
+    "episodes": 474,
+    "success": 456,
+    "optimal": 433
+   },
+   "6": {
+    "episodes": 462,
+    "success": 413,
+    "optimal": 386
+   },
+   "7": {
+    "episodes": 466,
+    "success": 379,
+    "optimal": 326
+   },
+   "8": {
+    "episodes": 496,
+    "success": 388,
+    "optimal": 265
+   },
+   "9": {
+    "episodes": 576,
+    "success": 434,
+    "optimal": 251
+   },
+   "10": {
+    "episodes": 578,
+    "success": 410,
+    "optimal": 199
+   },
+   "11": {
+    "episodes": 666,
+    "success": 470,
+    "optimal": 184
+   },
+   "12": {
+    "episodes": 694,
+    "success": 513,
+    "optimal": 174
+   },
+   "13": {
+    "episodes": 678,
+    "success": 487,
+    "optimal": 129
+   },
+   "14": {
+    "episodes": 514,
+    "success": 393,
+    "optimal": 120
+   },
+   "15": {
+    "episodes": 330,
+    "success": 248,
+    "optimal": 63
+   },
+   "16": {
+    "episodes": 164,
+    "success": 142,
+    "optimal": 64
+   },
+   "17": {
+    "episodes": 44,
+    "success": 34,
+    "optimal": 17
+   },
+   "18": {
+    "episodes": 10,
+    "success": 6,
+    "optimal": 6
+   }
+  }
+ },
+ "seconds": 341,
+ "budget": {
+  "name": "standard",
+  "max_actions": 30,
+  "max_visits": 3
+ }
+}

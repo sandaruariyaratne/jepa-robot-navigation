@@ -1,0 +1,130 @@
+{
+ "set": "val_hard_maps",
+ "title": "validation dense-wall maps",
+ "n_maps": 100,
+ "threshold": 7.046285629272461,
+ "max_nodes": 60,
+ "modes": [
+  "explore"
+ ],
+ "navigation": {
+  "explore": {
+   "episodes": 3936,
+   "success": 3935,
+   "optimal": 3383,
+   "loops": 0,
+   "steps": 24715,
+   "collisions": 140,
+   "rebuilds": 19232,
+   "fallback_plans": 393,
+   "frontier_plans": 2374,
+   "extra_steps": 3198
+  }
+ },
+ "first_map_quality": {
+  "explore": {
+   "maps": 1968,
+   "exact": 0,
+   "nodes": 42133,
+   "cells": 40890,
+   "covered": 34899,
+   "duplicates": 705,
+   "spurious": 6529,
+   "edges": 142416,
+   "edges_correct": 123957,
+   "overflow": 0,
+   "d_start_exact": 1640,
+   "d_start_unreachable": 102
+  }
+ },
+ "by_path_length": {
+  "explore": {
+   "1": {
+    "episodes": 276,
+    "success": 276,
+    "optimal": 276
+   },
+   "2": {
+    "episodes": 380,
+    "success": 380,
+    "optimal": 380
+   },
+   "3": {
+    "episodes": 408,
+    "success": 408,
+    "optimal": 404
+   },
+   "4": {
+    "episodes": 514,
+    "success": 514,
+    "optimal": 493
+   },
+   "5": {
+    "episodes": 468,
+    "success": 468,
+    "optimal": 434
+   },
+   "6": {
+    "episodes": 512,
+    "success": 512,
+    "optimal": 446
+   },
+   "7": {
+    "episodes": 466,
+    "success": 465,
+    "optimal": 371
+   },
+   "8": {
+    "episodes": 392,
+    "success": 392,
+    "optimal": 293
+   },
+   "9": {
+    "episodes": 248,
+    "success": 248,
+    "optimal": 162
+   },
+   "10": {
+    "episodes": 98,
+    "success": 98,
+    "optimal": 55
+   },
+   "11": {
+    "episodes": 64,
+    "success": 64,
+    "optimal": 30
+   },
+   "12": {
+    "episodes": 46,
+    "success": 46,
+    "optimal": 9
+   },
+   "13": {
+    "episodes": 38,
+    "success": 38,
+    "optimal": 15
+   },
+   "14": {
+    "episodes": 16,
+    "success": 16,
+    "optimal": 9
+   },
+   "15": {
+    "episodes": 8,
+    "success": 8,
+    "optimal": 4
+   },
+   "16": {
+    "episodes": 2,
+    "success": 2,
+    "optimal": 2
+   }
+  }
+ },
+ "seconds": 84,
+ "budget": {
+  "name": "explorer",
+  "max_actions": 60,
+  "max_visits": 1000000
+ }
+}

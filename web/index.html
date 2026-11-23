@@ -96,12 +96,14 @@
         <li><b>Imagine.</b> A predictor guesses the next latent for each of the 4 moves, without touching the real world.
           Doing this from every cell gives an imagined map of where every move leads.</li>
         <li><b>Plan.</b> It tries all 64 three-move sequences in imagination and scores each by how close it gets to the goal on
-          that imagined map. Moves it isn't sure about are treated as walls.</li>
+          that imagined map. Every imagined move is snapped to the closest cell picture it knows before the next one, so
+          its imagination can't drift; moves it isn't sure about are treated as walls.</li>
         <li><b>Act.</b> It makes the first move, looks again, and re-plans.</li>
       </ol>
       <p class="small"><b>Why JEPA.</b> The encoder is trained together with the predictor, against a slowly updated copy of
         itself, so that the latent space makes moves predictable rather than just redrawing the picture. On 1,200 maps it
-        never saw, it reaches the goal 99.9% / 97.3% / 94.0% of the time (normal maps / dense walls / mazes).</p>
+        never saw (normal maps, dense walls and winding mazes), it reaches the goal by a shortest path 100% of the time. A model
+        with the same networks trained to redraw the next picture instead solves 79% of the mazes.</p>
       <p class="small muted">Trained on 70 maps with 3–7 walls; the goal is always top-right. The model runs entirely in your
         browser (about 1 MB of weights, no server). Built from the
         <a href="https://github.com/sandaruariyaratne/jepa-robot-navigation" target="_blank" rel="noopener">project's</a>

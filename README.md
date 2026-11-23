@@ -71,6 +71,7 @@ Findings: [REPORT.md §7](REPORT.md#7-v2-experiment-1-joint-jepa-training).
 .venv/bin/python -m multimap.calibrate --config config_multimap_jepa.yaml    # unknown threshold from validation maps
 .venv/bin/python -m multimap.new_maps --set maze_maps --threshold calibrated --planner snap --config config_multimap_jepa.yaml
 .venv/bin/python -m multimap.step3 train && .venv/bin/python -m multimap.step3 eval && .venv/bin/python -m multimap.step3 summary
+.venv/bin/python -m multimap.explore --set maze_maps     # no picture of every cell: imagine (A) / explore (B)
 ```
 
 100 random layouts split 70 / 15 / 15 by map; each map snaps to its own
@@ -80,7 +81,10 @@ codebook. The stress tests load the trained models and never retrain; add
 1,200 stress-test layouts). `multimap.step3` trains and compares JEPA, an
 end-to-end pixel world model and two ablations over several seeds
 (`results_step3/summary.md`; the pixel baseline takes ~1 h per seed).
-Findings: [REPORT.md §8–10](REPORT.md#8-multi-map-experiments-held-out-layouts).
+`multimap.explore` drops the privileged picture of every cell: the robot
+imagines the map from the start and goal pictures (A), or also corrects it
+with what it sees while walking (B; `--budget explorer` for 60 moves, no loop rule).
+Findings: [REPORT.md §8–11](REPORT.md#8-multi-map-experiments-held-out-layouts).
 
 ### Interactive web demo
 

@@ -117,7 +117,8 @@ export function loadModel(meta, buffer) {
     for (let i = 0; i < D; i++) out[i] = z[i] + x[i];
     return out;
   };
-  return { meta, encode, step, threshold: meta.unknown_factor * meta.median_one_step_error };
+  const threshold = meta.unknown_threshold ?? meta.unknown_factor * meta.median_one_step_error;
+  return { meta, encode, step, threshold };
 }
 
 // --- imagination: per-map codebook, snapping, imagined graph, D(c) ------------------------
@@ -194,36 +195,41 @@ export function mulberry32(seed) {
   };
 }
 
-/** P2: all 4^H action sequences; cost = min_k [k + D(snap(z_k))] + revisit penalty; ties broken by rng. */
+/** P2: all 4^H action sequences; cost = min_k [k + D(snap(z_k))] + revisit penalty; ties broken by rng.
+ *  With planning.snap_each_step every imagined step continues from the codebook entry the previous
+ *  prediction snapped to, so the look-ahead is a walk on the imagined graph and cannot drift. */
 export function planP2(world, z, visits, rng) {
   const { model, codebook, D, threshold } = world;
-  const { horizon, revisit_penalty: penalty } = model.meta.planning;
+  const { horizon, revisit_penalty: penalty, snap_each_step: snapEach = false } = model.meta.planning;
   const A = ACTIONS.length, S = A ** horizon;
   // imagine every sequence, sharing prefixes (identical to rolling each one out)
-  let level = [{ z, seq: [] }];
+  let level = [{ state: z, seq: [] }];
   const traj = [];
   for (let k = 0; k < horizon; k++) {
     const nxt = [];
-    for (const node of level) for (let a = 0; a < A; a++) nxt.push({ z: model.step(node.z, a), seq: [...node.seq, a], parent: node });
+    for (const node of level) for (let a = 0; a < A; a++) {
+      const pred = model.step(node.state, a);
+      const sn = snap(pred, codebook);
+      nxt.push({ pred, sn, state: snapEach ? codebook[sn.index] : pred, seq: [...node.seq, a], parent: node });
+    }
     level = nxt;
   }
   for (const leaf of level) {               // lexicographic order, like itertools.product
-    const states = [];
-    for (let n = leaf; n.parent; n = n.parent) states.unshift(n.z);
-    traj.push({ seq: leaf.seq, states });
+    const states = [], snaps = [];
+    for (let n = leaf; n.parent; n = n.parent) { states.unshift(n.pred); snaps.unshift(n.sn); }
+    traj.push({ seq: leaf.seq, states, snaps });
   }
   const cost = new Array(S), entries = new Array(S);
   let anyFinite = false;
   traj.forEach((t, s) => {
     let best = Infinity, trusted = true;
     entries[s] = [];
-    t.states.forEach((zk, k) => {
-      const sn = snap(zk, codebook);
+    t.snaps.forEach((sn, k) => {
       trusted = trusted && sn.distance <= threshold;
       entries[s].push(trusted ? sn.index : -1);
       if (trusted && D[sn.index] >= 0) best = Math.min(best, k + 1 + D[sn.index]);
     });
-    const first = snap(t.states[0], codebook);
+    const first = t.snaps[0];
     const rev = first.distance <= threshold ? penalty * (visits.get(first.index) || 0) : 0;
     cost[s] = best + rev;
     t.revisit = rev;

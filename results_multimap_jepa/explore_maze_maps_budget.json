@@ -1,0 +1,140 @@
+{
+ "set": "maze_maps",
+ "title": "maze maps (8-14 walls, longest paths)",
+ "n_maps": 200,
+ "threshold": 7.046285629272461,
+ "max_nodes": 60,
+ "modes": [
+  "explore"
+ ],
+ "navigation": {
+  "explore": {
+   "episodes": 8048,
+   "success": 7570,
+   "optimal": 4495,
+   "loops": 0,
+   "steps": 121833,
+   "collisions": 6826,
+   "rebuilds": 76146,
+   "fallback_plans": 25395,
+   "frontier_plans": 34057,
+   "extra_steps": 30096
+  }
+ },
+ "first_map_quality": {
+  "explore": {
+   "maps": 4024,
+   "exact": 0,
+   "nodes": 77148,
+   "cells": 85182,
+   "covered": 64185,
+   "duplicates": 1325,
+   "spurious": 11638,
+   "edges": 262040,
+   "edges_correct": 224442,
+   "overflow": 0,
+   "d_start_exact": 1899,
+   "d_start_unreachable": 805
+  }
+ },
+ "by_path_length": {
+  "explore": {
+   "1": {
+    "episodes": 442,
+    "success": 442,
+    "optimal": 442
+   },
+   "2": {
+    "episodes": 466,
+    "success": 466,
+    "optimal": 466
+   },
+   "3": {
+    "episodes": 480,
+    "success": 480,
+    "optimal": 476
+   },
+   "4": {
+    "episodes": 508,
+    "success": 507,
+    "optimal": 494
+   },
+   "5": {
+    "episodes": 474,
+    "success": 474,
+    "optimal": 433
+   },
+   "6": {
+    "episodes": 462,
+    "success": 440,
+    "optimal": 386
+   },
+   "7": {
+    "episodes": 466,
+    "success": 440,
+    "optimal": 326
+   },
+   "8": {
+    "episodes": 496,
+    "success": 462,
+    "optimal": 265
+   },
+   "9": {
+    "episodes": 576,
+    "success": 522,
+    "optimal": 251
+   },
+   "10": {
+    "episodes": 578,
+    "success": 521,
+    "optimal": 199
+   },
+   "11": {
+    "episodes": 666,
+    "success": 596,
+    "optimal": 184
+   },
+   "12": {
+    "episodes": 694,
+    "success": 631,
+    "optimal": 174
+   },
+   "13": {
+    "episodes": 678,
+    "success": 616,
+    "optimal": 129
+   },
+   "14": {
+    "episodes": 514,
+    "success": 475,
+    "optimal": 120
+   },
+   "15": {
+    "episodes": 330,
+    "success": 293,
+    "optimal": 63
+   },
+   "16": {
+    "episodes": 164,
+    "success": 155,
+    "optimal": 64
+   },
+   "17": {
+    "episodes": 44,
+    "success": 40,
+    "optimal": 17
+   },
+   "18": {
+    "episodes": 10,
+    "success": 10,
+    "optimal": 6
+   }
+  }
+ },
+ "seconds": 313,
+ "budget": {
+  "name": "explorer",
+  "max_actions": 60,
+  "max_visits": 1000000
+ }
+}

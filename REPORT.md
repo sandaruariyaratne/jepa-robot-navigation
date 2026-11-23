@@ -24,7 +24,10 @@ included, to 100% success by shortest paths (§9). Across seeds and against an
 end-to-end pixel world model with the same architecture and data, the JEPA
 objective is what makes this work: the pixel model ties it on the validation
 metric but solves 79% of mazes, and removing the variance / covariance terms
-collapses the latent (§10).
+collapses the latent (§10). All of this uses a privileged picture of the robot on every
+free cell. Given only real observations (the start and goal pictures, then
+what it sees as it walks), imagination alone reaches 41–89% and an explorer
+that trusts experience over imagination 83–99.6% (§11).
 
 ## 1. Setup
 
@@ -385,23 +388,83 @@ come from seeing fewer windows rather than from the objective. It also took
 Files: [results_step3/summary.md](results_step3/summary.md) and one JSON per
 run; checkpoints in `checkpoints_step3/`.
 
-## 11. What these results do not show
+## 11. Planning without privileged pictures
+
+Every result above hands the planner a codebook: one rendered picture of the
+robot on every free cell of the new map. A real agent never sees itself where
+it has not been. Here it gets only real observations
+(`python -m multimap.explore`, same model, no retraining):
+
+- **A (imagine).** Start from two pictures, the current observation and the
+  goal image (the task). Imagine all 4 moves from each, breadth first; a
+  prediction within the calibrated threshold (7.05) of an existing node is that
+  node, otherwise it becomes a new imagined node and is expanded in turn. The
+  nodes become the codebook; graph, D(c) and planner are as in §9.
+- **B (explore).** As A, but after reaching a cell not seen before its real
+  picture becomes an anchor and the map is regrown around it, and every move
+  actually made (a bump included) overrides the imagined edge for that cell and
+  action. When the imagined map has no route to the goal, the robot heads for
+  the nearest node it has only imagined (frontier exploration).
+
+Planning walks the graph (`GraphP2`); on the privileged codebook it chooses
+exactly what snapped P2 chooses (tested), and reproduces its 100%. Settings and
+both budgets were fixed on the 200 validation maps of §9, then the test sets
+were run once. Success / shortest path, every free start, two seeds:
+
+| Test set | Picture of every cell | A: imagine | B: explore | B, explorer's budget |
+|---|---|---|---|---|
+| Like training (24,146 episodes) | 100% / 100% | 89.4% / 85.9% | **99.6% / 93.7%** | 100.0% / 93.7% |
+| Dense walls (19,680) | 100% / 100% | 74.8% / 70.0% | **97.6% / 85.5%** | 99.6% / 85.5% |
+| Mazes (8,048) | 100% / 100% | 40.6% / 38.4% | **82.7% / 55.9%** | 94.1% / 55.9% |
+
+The first three columns use the usual rules (30 moves, third visit to a cell
+= loop failure). An explorer must back out of dead ends, so the last column
+gives B 60 moves and no loop rule.
+
+**Why A fails on long routes: drift.** On validation mazes the nearest other
+cell's latent is 6.5–9.6 away (median 9.6), and a raw imagined latent drifts
+that far within 3–5 moves (median error 2.0 after one step, 4.5 after five,
+99th percentile 10–11 from step 3). Beyond that the model cannot tell which
+cell it is imagining, whatever the threshold. The imagined maze before the
+first move finds 75% of the real cells, gets 86% of their edges right, adds
+~3 nodes that match no cell, and is never exactly right; steps-to-goal from
+the start is exact in 47% of mazes (92% on training-like maps). A's maze
+success falls with distance: 99% at 3 moves, 80% at 5, 33% at 8, 5% at 12.
+
+**Why B recovers: real pictures replace imagined ones.** B walks into a wall
+on 0.9% of maze moves (A: 24%), and its maze success stays at 71–87% for every
+route length from 9 to 17 moves. The price is detours (1.9 extra moves per
+success on mazes, so only 56% shortest paths) and loop failures on long mazes;
+with the explorer's budget 94% of maze runs reach the goal. Without the
+experience override and frontier step, B reached 58% on the first 10 validation
+mazes; with them, 83%.
+
+So the 100% of §9 depends on the privileged pictures for long routes. The
+model's one-step predictions are good enough to explore with, but its
+multi-step imagination is only reliable 3–4 moves ahead.
+
+Files: `results_multimap_jepa/explore_*.md` (`_budget` = explorer's budget;
+`val_` = selection).
+
+## 12. What these results do not show
 
 - **Other conditions.** Same grid size, fixed goal, deterministic dynamics,
   noise-free frames; every test layout comes from the same kind of generator.
 - **A good long-horizon model.** Raw rollouts drift (69% correct at 10 steps on
   new maps); navigation is perfect because each imagined step is snapped to a
   per-map codebook, i.e. the planner works on a learned graph.
-- **Planning without privileged frames.** Each new map's codebook is built
-  from one frame of the robot on every free cell (every baseline gets the
-  same). A real agent would have to explore to collect them.
+- **Exploration under partial observability.** In §11 the robot still sees
+  the whole map in every picture; only the pictures of itself elsewhere are
+  withheld. A limited view would need memory and a different encoder.
 - **A fully matched baseline.** The pixel model saw a quarter as many windows
   per step; ablations have 2 seeds, not 3–5.
 
-## 12. Next steps
+## 13. Next steps
 
-1. Pixel baseline at 512 windows per step, and a checkpoint metric based on
+1. Longer reliable imagination: train with longer rollouts (K = 8–12) or a
+   loss that keeps distinct cells farther apart than the multi-step drift, and
+   re-run §11; A is the direct measure.
+2. Pixel baseline at 512 windows per step, and a checkpoint metric based on
    validation navigation rather than snap@5.
-2. Remaining step 12 items: random goals, a learned goal-distance head, moving
-   obstacles, partial observability, stochastic dynamics; and building each new
-   map's codebook by exploration.
+3. Remaining step 12 items: random goals, a learned goal-distance head, moving
+   obstacles, partial observability, stochastic dynamics.

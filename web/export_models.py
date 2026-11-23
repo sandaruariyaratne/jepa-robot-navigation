@@ -2,9 +2,9 @@
 
     .venv/bin/python web/export_models.py
 
-Writes web/models/{jepa,v1}.{json,bin}: every tensor as float32, little-endian,
+Writes web/models/jepa.{json,bin}: every tensor as float32, little-endian,
 concatenated; the JSON lists names, shapes and offsets plus the planning
-settings. web/test/vectors.json holds PyTorch results on a few layouts (frame
+settings (snapped P2, unknown threshold calibrated on the validation maps). web/test/vectors.json holds PyTorch results on a few layouts (frame
 hashes, latents, imagined graph, D(c), P2 first-plan costs) that
 web/test/check.mjs compares the JavaScript port against.
 """
@@ -26,6 +26,7 @@ from config import load_config, resolve  # noqa: E402
 from environment import COLORS, DEFAULT_GOAL, DEFAULT_WALLS, GridMap, GridWorld, distances_to_goal  # noqa: E402
 from models.encoder import load_encoder  # noqa: E402
 from models.predictor import load_predictor  # noqa: E402
+from multimap.calibrate import load_threshold  # noqa: E402
 from multimap.maps import load_maps  # noqa: E402
 from planning.imagination import WorldModel  # noqa: E402
 from planning.latent_graph import build_graph, goal_entry, steps_to_goal  # noqa: E402
@@ -49,13 +50,15 @@ def export_model(key: str) -> tuple[dict, object, object]:
             blob += a.tobytes()
             offset += a.size
     p = cfg["planning"]
+    cal = load_threshold(cfg)        # the demo plans like the final evaluation: snapped P2, calibrated threshold
     meta = {
         "key": key, "label": label, "latent_dim": encoder.latent_dim, "hidden": pck["hidden"],
         "n_actions": predictor.n_actions, "median_one_step_error": pck["median_one_step_error"],
         "unknown_factor": cfg["imagination"]["unknown_factor"],
-        "unknown_threshold": cfg["imagination"]["unknown_factor"] * pck["median_one_step_error"],
+        "default_threshold": cfg["imagination"]["unknown_factor"] * pck["median_one_step_error"],
+        "unknown_threshold": cal["threshold"], "unknown_rule": cal["rule"],
         "planning": {"horizon": p["p2"]["horizon"], "max_actions": p["max_actions"], "max_visits": p["max_visits"],
-                     "revisit_penalty": p["revisit_penalty"]},
+                     "revisit_penalty": p["revisit_penalty"], "snap_each_step": True},
         "trained_on": {"maps": len(load_maps(resolve(mm["maps_path"]))[1]["train"]),
                        "walls": [mm["min_walls"], mm["max_walls"]], "goal": list(DEFAULT_GOAL)},
         "tensors": tensors, "floats": offset,
@@ -76,13 +79,13 @@ def vectors_for(grid: GridMap, meta: dict, encoder, predictor) -> dict:
     r = GridWorld(grid).renderer
     frames = np.stack([r.render(c) for c in cells])
     z = encoder.standardize(encoder(torch.as_tensor(frames)))
-    world = WorldModel(encoder, predictor, z, meta["median_one_step_error"], meta["unknown_factor"])
+    world = WorldModel(encoder, predictor, z, meta["unknown_threshold"], 1.0)   # threshold = factor x err
     g = build_graph(world)
     goal_frame = r.render(grid.goal)
     goal, _ = goal_entry(world, goal_frame)
     d = steps_to_goal(g, goal)
     z_goal = world.encode(goal_frame)
-    planner = P2(meta["planning"]["horizon"])
+    planner = P2(meta["planning"]["horizon"], snap_each_step=meta["planning"]["snap_each_step"])
     plans = []
     for i, c in enumerate(cells):
         if c == grid.goal:

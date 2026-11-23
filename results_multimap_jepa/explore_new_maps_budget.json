@@ -1,0 +1,120 @@
+{
+ "set": "new_maps",
+ "title": "new_maps",
+ "n_maps": 500,
+ "threshold": 7.046285629272461,
+ "max_nodes": 60,
+ "modes": [
+  "explore"
+ ],
+ "navigation": {
+  "explore": {
+   "episodes": 24146,
+   "success": 24145,
+   "optimal": 22636,
+   "loops": 0,
+   "steps": 127919,
+   "collisions": 351,
+   "rebuilds": 101679,
+   "fallback_plans": 519,
+   "frontier_plans": 2872,
+   "extra_steps": 6304
+  }
+ },
+ "first_map_quality": {
+  "explore": {
+   "maps": 12073,
+   "exact": 86,
+   "nodes": 285817,
+   "cells": 304508,
+   "covered": 267349,
+   "duplicates": 2127,
+   "spurious": 16341,
+   "edges": 1077904,
+   "edges_correct": 990833,
+   "overflow": 0,
+   "d_start_exact": 11144,
+   "d_start_unreachable": 205
+  }
+ },
+ "by_path_length": {
+  "explore": {
+   "1": {
+    "episodes": 1678,
+    "success": 1678,
+    "optimal": 1678
+   },
+   "2": {
+    "episodes": 2252,
+    "success": 2252,
+    "optimal": 2252
+   },
+   "3": {
+    "episodes": 2758,
+    "success": 2758,
+    "optimal": 2749
+   },
+   "4": {
+    "episodes": 3426,
+    "success": 3426,
+    "optimal": 3353
+   },
+   "5": {
+    "episodes": 3724,
+    "success": 3724,
+    "optimal": 3592
+   },
+   "6": {
+    "episodes": 3574,
+    "success": 3574,
+    "optimal": 3348
+   },
+   "7": {
+    "episodes": 3010,
+    "success": 3009,
+    "optimal": 2711
+   },
+   "8": {
+    "episodes": 2094,
+    "success": 2094,
+    "optimal": 1800
+   },
+   "9": {
+    "episodes": 1168,
+    "success": 1168,
+    "optimal": 950
+   },
+   "10": {
+    "episodes": 242,
+    "success": 242,
+    "optimal": 121
+   },
+   "11": {
+    "episodes": 118,
+    "success": 118,
+    "optimal": 50
+   },
+   "12": {
+    "episodes": 54,
+    "success": 54,
+    "optimal": 21
+   },
+   "13": {
+    "episodes": 34,
+    "success": 34,
+    "optimal": 6
+   },
+   "14": {
+    "episodes": 14,
+    "success": 14,
+    "optimal": 5
+   }
+  }
+ },
+ "seconds": 520,
+ "budget": {
+  "name": "explorer",
+  "max_actions": 60,
+  "max_visits": 1000000
+ }
+}
