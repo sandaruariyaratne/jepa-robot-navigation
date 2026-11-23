@@ -58,6 +58,7 @@ from planning.true_model import TrueModel
 from .maps import load_maps
 
 MODES = ("privileged", "imagine", "explore")
+ALL_MODES = (*MODES, "oracle")       # oracle: true walls once seen, unseen cells assumed free (fog-of-war baseline)
 
 
 @dataclass
@@ -133,37 +134,118 @@ class GraphP2:
         return cost, cur, rev
 
 
+def fog_thresholds(cfg: dict, verbose: bool = False) -> dict:
+    """Stay and merge thresholds from the validation split of the training maps (saved next to the predictor).
+
+    stay  = 99% quantile of |prediction - own cell| over blocked moves;
+    merge = 1% quantile of |prediction - nearest wrong cell| over real moves (wrong merges <= ~1%).
+    """
+    mm = cfg["multimap"]
+    path = resolve(mm["predictor"]["checkpoint"]).with_name("fog_thresholds.json")
+    if path.exists():
+        return json.loads(path.read_text())
+    from planning.true_model import TrueModel
+    maps, splits = load_maps(resolve(mm["maps_path"]))
+    encoder, _ = load_encoder(resolve(mm["encoder"]["checkpoint"]))
+    predictor, _ = load_predictor(resolve(mm["predictor"]["checkpoint"]))
+    blocked, wrong, right = [], [], []
+    with torch.no_grad():
+        for m in splits["val"]:
+            grid = maps[m]
+            env, cells = GridWorld(grid), CellIndex(grid).cells
+            z = encoder.standardize(encoder(torch.as_tensor(np.stack([env.render((int(x), int(y))) for x, y in cells]))))
+            tn, n = TrueModel(grid).next.numpy(), len(cells)
+            p = predictor(z.repeat_interleave(4, 0), torch.arange(4).repeat(n)).view(n, 4, -1)
+            for i in range(n):
+                for a in range(4):
+                    d = torch.linalg.norm(z - p[i, a], dim=-1)
+                    if tn[i, a] == i:
+                        blocked.append(float(d[i]))
+                    else:
+                        right.append(float(d[tn[i, a]]))
+                        d[[i, int(tn[i, a])]] = float("inf")
+                        wrong.append(float(d.min()))
+    out = {"stay": float(np.quantile(blocked, 0.99)), "merge": float(np.quantile(wrong, 0.01)),
+           "rule": "stay: 99% quantile of |pred - own cell| (blocked moves); merge: 1% quantile of "
+                   "|pred - nearest wrong cell| (real moves); validation split of the training maps",
+           "blocked_moves": len(blocked), "real_moves": len(right),
+           "real_moves_within_merge_of_true_cell": float(np.mean(np.array(right) <= np.quantile(wrong, 0.01)))}
+    path.write_text(json.dumps(out, indent=1) + "\n")
+    if verbose:
+        print(out)
+    return out
+
+
+def split_threshold(threshold) -> tuple[float | None, float]:
+    """One threshold (stay = merge, as on the 6 x 5 grid) or (stay, merge) for fog of war.
+
+    stay:  a prediction this close to the node it came from is a blocked move.
+    merge: otherwise, a prediction this close to another node is that node; farther = a new node.
+    """
+    return tuple(threshold) if isinstance(threshold, (tuple, list)) else (None, float(threshold))
+
+
 @torch.no_grad()
-def grow(encoder, predictor, anchors: torch.Tensor, threshold: float, max_nodes: int = 60) -> tuple[torch.Tensor, bool]:
+def grow(encoder, predictor, anchors: torch.Tensor, threshold, max_nodes: int = 60) -> tuple[torch.Tensor, bool]:
     """Nodes reachable in imagination from the anchors [K, D]; anchors stay at indices 0..K-1."""
-    nodes = [z for z in anchors]
-    frontier = list(range(len(nodes)))
+    stay, merge = split_threshold(threshold)
+    nodes = anchors.clone()
+    frontier = torch.arange(len(nodes))
     acts = torch.arange(predictor.n_actions)
     overflow = False
-    while frontier:
-        z = torch.stack([nodes[u] for u in frontier])
-        pred = predictor(z.repeat_interleave(len(acts), 0), acts.repeat(len(frontier)))
-        nxt = []
-        for p in pred:
-            if torch.linalg.norm(torch.stack(nodes) - p, dim=-1).min() <= threshold:
-                continue                                       # an existing node (or a blocked move)
-            if len(nodes) >= max_nodes:
+    while len(frontier):
+        pred = predictor(nodes[frontier].repeat_interleave(len(acts), 0), acts.repeat(len(frontier)))
+        d = torch.cdist(pred, nodes)
+        if stay is None:
+            far = d.min(1).values > merge                             # not an existing node (nor a blocked move)
+        else:
+            rows, src = torch.arange(len(pred)), frontier.repeat_interleave(len(acts))
+            blocked = d[rows, src] <= stay
+            d[rows, src] = float("inf")
+            far = ~blocked & (d.min(1).values > merge)
+        new: list[torch.Tensor] = []
+        for p in pred[far]:                                           # in order, so new nodes can merge
+            if new and torch.linalg.norm(torch.stack(new) - p, dim=-1).min() <= merge:
+                continue
+            if len(nodes) + len(new) >= max_nodes:
                 overflow = True
                 continue
-            nodes.append(p)
-            nxt.append(len(nodes) - 1)
-        frontier = nxt
-    return torch.stack(nodes), overflow
+            new.append(p)
+        frontier = torch.arange(len(nodes), len(nodes) + len(new))
+        if new:
+            nodes = torch.cat([nodes, torch.stack(new)])
+    return nodes, overflow
 
 
-def imagined_map(encoder, predictor, anchors: torch.Tensor, goal: int, threshold: float,
+def imagined_map(encoder, predictor, anchors: torch.Tensor, goal: int, threshold,
                  max_nodes: int = 60) -> ImaginedMap:
+    stay, merge = split_threshold(threshold)
     nodes, overflow = grow(encoder, predictor, anchors, threshold, max_nodes)
-    return graph_map(WorldModel(encoder, predictor, nodes, threshold, 1.0), len(anchors), goal, overflow)
+    return graph_map(WorldModel(encoder, predictor, nodes, merge, 1.0), len(anchors), goal, overflow, stay)
 
 
-def graph_map(world: WorldModel, n_anchors: int, goal: int, overflow: bool = False) -> ImaginedMap:
-    g = build_graph(world)                                             # unknown threshold = threshold
+@torch.no_grad()
+def two_threshold_graph(world: WorldModel, stay: float) -> "LatentGraph":
+    """build_graph with a separate stay threshold: blocked if the prediction stays within `stay` of its own node;
+    otherwise the nearest other node if within the merge (unknown) threshold, else unknown (self-loop)."""
+    from planning.latent_graph import LatentGraph
+    c, a = world.n_entries, world.n_actions
+    p = world.step(world.codebook.repeat_interleave(a, dim=0), torch.arange(a).repeat(c))
+    d = torch.cdist(p, world.codebook)
+    rows, src = torch.arange(c * a), torch.arange(c).repeat_interleave(a)
+    d_self = d[rows, src].clone()
+    blocked = d_self <= stay
+    d[rows, src] = float("inf")
+    dist, idx = d.min(1)
+    hit = ~blocked & (dist <= world.unknown_threshold)
+    nxt = torch.where(hit, idx, src)
+    return LatentGraph(nxt.view(c, a).numpy(), torch.where(blocked, src, idx).view(c, a).numpy(),
+                       (blocked | hit).view(c, a).numpy(), torch.where(blocked, d_self, dist).view(c, a).numpy())
+
+
+def graph_map(world: WorldModel, n_anchors: int, goal: int, overflow: bool = False,
+              stay: float | None = None) -> ImaginedMap:
+    g = build_graph(world) if stay is None else two_threshold_graph(world, stay)
     return ImaginedMap(world, n_anchors, g.next, g.known, steps_to_goal(g, goal), goal, overflow)
 
 
@@ -204,8 +286,9 @@ def run(mode: str, env: GridWorld, encoder, predictor, goal_frame, start, seed: 
     enc = lambda f: encoder.standardize(encoder(torch.as_tensor(f)[None]))[0]   # noqa: E731
     z_goal, z = enc(goal_frame), enc(obs)
     if mode == "privileged":
-        world = WorldModel(encoder, predictor, privileged, threshold, 1.0)
-        m = graph_map(world, len(privileged), int(world.snap(z_goal).index))
+        stay, merge = split_threshold(threshold)
+        world = WorldModel(encoder, predictor, privileged, merge, 1.0)
+        m = graph_map(world, len(privileged), int(world.snap(z_goal).index), stay=stay)
     else:
         m = imagined_map(encoder, predictor, torch.stack([z, z_goal]), 1, threshold, max_nodes)
     first_map = m
@@ -252,23 +335,79 @@ def run(mode: str, env: GridWorld, encoder, predictor, goal_frame, start, seed: 
             "rebuilds": rebuilds, "fallbacks": fallbacks, "frontier": frontier, "first_map": first_map}
 
 
+def run_oracle(env: GridWorld, start, cfg: dict) -> dict:
+    """Optimistic planning with perfect perception: walls are known exactly once inside the view radius,
+    unseen cells are assumed free; follow a shortest path on that map and re-plan after every move.
+    The cost of not seeing the map, with no model errors at all."""
+    from environment import GridMap
+    p, grid = cfg["planning"], env.map
+    r = grid.view_radius
+    env.reset(start=start)
+    known: set = set()
+
+    def reveal(pos):
+        for y in range(grid.rows):
+            for x in range(grid.cols):
+                if (x, y) in grid.walls and (r is None or max(abs(x - pos[0]), abs(y - pos[1])) <= r):
+                    known.add((x, y))
+
+    pos = tuple(start)
+    reveal(pos)
+    optimal = int(distances_to_goal(grid)[start[1], start[0]])
+    visits = Counter({pos: 1})
+    steps = collisions = 0
+    success = loop = False
+    for _ in range(p["max_actions"]):
+        d = distances_to_goal(GridMap(cols=grid.cols, rows=grid.rows, walls=frozenset(known), goal=grid.goal))
+        best = min(range(4), key=lambda a: d[grid.transition(pos, a)[0][1], grid.transition(pos, a)[0][0]]
+                   if grid.transition(pos, a)[0] != pos else 10 ** 9)
+        res = env.step(best)
+        steps += 1
+        collisions += int(res.collision)
+        pos = res.pos
+        reveal(pos)
+        visits[pos] += 1
+        if res.terminated:
+            success = True
+            break
+        if visits[pos] >= p["max_visits"]:
+            loop = True
+            break
+    return {"success": success, "steps": steps, "optimal": optimal, "loop": loop, "collisions": collisions,
+            "rebuilds": 0, "fallbacks": 0, "frontier": 0, "first_map": None}
+
+
 # --- evaluation over a map set ---------------------------------------------------------------
 def evaluate(cfg: dict, set_key: str, modes=MODES, threshold: float | None = None, max_nodes: int = 60,
-             limit: int | None = None, verbose: bool = True) -> dict:
+             limit: int | None = None, verbose: bool = True, shard: tuple[int, int] = (0, 1)) -> dict:
+    """shard (i, n): only maps k with k % n == i (start cells and seeds stay those of the whole run)."""
     mm, nm = cfg["multimap"], cfg["multimap"][set_key]
+    if not resolve(nm["maps_path"]).exists():          # build the set (and its episodes) as multimap.new_maps does
+        from .new_maps import new_maps_and_data
+        new_maps_and_data(cfg, set_key)
     maps, _ = load_maps(resolve(nm["maps_path"]))
     maps = maps[:limit] if limit else maps
+    if set(modes) == {"oracle"}:                       # the oracle needs no model
+        return _evaluate_oracle(cfg, set_key, maps, limit, verbose)
     encoder, _ = load_encoder(resolve(mm["encoder"]["checkpoint"]))
     predictor, _ = load_predictor(resolve(mm["predictor"]["checkpoint"]))
     encoder.eval(), predictor.eval()
     if threshold is None:
         from .calibrate import load_threshold
         threshold = load_threshold(cfg)["threshold"]
+    per_mode = {m: threshold for m in modes}
+    if mm.get("explore", {}).get("two_thresholds") and not isinstance(threshold, (tuple, list)):
+        # fog: imagined maps (A, B) need separate stay / merge thresholds; the full codebook keeps the
+        # calibrated one, which did better there on validation (REPORT section 12)
+        t = fog_thresholds(cfg)
+        per_mode.update({m: (t["stay"], t["merge"]) for m in modes if m in ("imagine", "explore")})
     tot = {m: Counter() for m in modes}
-    quality = {m: Counter() for m in modes if m != "privileged"}
+    quality = {m: Counter() for m in modes if m in ("imagine", "explore")}
     by_len = {m: defaultdict(Counter) for m in modes}
     t0 = time.perf_counter()
     for k, grid in enumerate(maps):
+        if k % shard[1] != shard[0]:
+            continue
         env = GridWorld(grid, terminate_on_goal=True)
         cells = CellIndex(grid).cells
         frames = np.stack([env.render((int(x), int(y))) for x, y in cells])
@@ -276,11 +415,13 @@ def evaluate(cfg: dict, set_key: str, modes=MODES, threshold: float | None = Non
             cell_latents = encoder.standardize(encoder(torch.as_tensor(frames)))
         goal_frame = env.render(grid.goal)
         index = {(int(x), int(y)): i for i, (x, y) in enumerate(cells)}
-        for i, start in enumerate(grid.start_cells()):
+        for i, start in _starts(grid, nm, k):
             for seed in nm["nav_seeds"]:
                 s = int(np.random.SeedSequence([seed, i]).generate_state(1)[0])
                 for mode in modes:
-                    e = run(mode, env, encoder, predictor, goal_frame, start, s, cfg, threshold, cell_latents, max_nodes)
+                    e = (run_oracle(env, start, cfg) if mode == "oracle" else
+                         run(mode, env, encoder, predictor, goal_frame, start, s, cfg, per_mode[mode], cell_latents,
+                             max_nodes))
                     opt = e["success"] and e["steps"] == e["optimal"]
                     t = tot[mode]
                     t.update(episodes=1, success=int(e["success"]), optimal=int(opt), loops=int(e["loop"]),
@@ -298,17 +439,100 @@ def evaluate(cfg: dict, set_key: str, modes=MODES, threshold: float | None = Non
         if verbose and ((k + 1) % 25 == 0 or k + 1 == len(maps)):
             line = ", ".join(f"{m} {tot[m]['success'] / tot[m]['episodes']:.1%}/{tot[m]['optimal'] / tot[m]['episodes']:.1%}"
                              for m in modes)
-            print(f"  {k + 1} maps ({time.perf_counter() - t0:.0f}s): success/shortest {line}", flush=True)
-    return {"set": set_key, "title": nm.get("title", set_key), "n_maps": len(maps), "threshold": threshold,
-            "max_nodes": max_nodes, "modes": list(modes),
+            who = f"[{shard[0] + 1}/{shard[1]}] " if shard[1] > 1 else ""
+            print(f"  {who}{k + 1} maps ({time.perf_counter() - t0:.0f}s): success/shortest {line}", flush=True)
+    return {"set": set_key, "title": nm.get("title", set_key), "n_maps": len(range(shard[0], len(maps), shard[1])),
+            "threshold": per_mode if len({str(v) for v in per_mode.values()}) > 1 else threshold,
+            "max_nodes": max_nodes, "modes": list(modes), "nav_starts": nm.get("nav_starts"),
             "navigation": {m: dict(v) for m, v in tot.items()},
             "first_map_quality": {m: dict(v) for m, v in quality.items()},
             "by_path_length": {m: {int(k): dict(v) for k, v in sorted(d.items())} for m, d in by_len.items()},
             "seconds": round(time.perf_counter() - t0)}
 
 
+def _evaluate_shard(args):
+    cfg, set_key, modes, threshold, max_nodes, limit, shard = args
+    torch.set_num_threads(1)
+    return evaluate(cfg, set_key, modes, threshold, max_nodes, limit, True, shard)
+
+
+def evaluate_parallel(cfg: dict, set_key: str, modes=MODES, threshold=None, max_nodes: int = 60,
+                      limit: int | None = None, workers: int = 1) -> dict:
+    """evaluate() split over `workers` processes by map; counts are summed, so the result is the same."""
+    if workers <= 1 or set(modes) == {"oracle"}:      # the oracle is fast and not sharded
+        return evaluate(cfg, set_key, modes, threshold, max_nodes, limit)
+    import multiprocessing as mp
+    with mp.get_context("spawn").Pool(workers) as pool:
+        parts = pool.map(_evaluate_shard, [(cfg, set_key, modes, threshold, max_nodes, limit, (i, workers))
+                                           for i in range(workers)])
+    return merge_results(parts)
+
+
+def merge_results(parts: list[dict]) -> dict:
+    def add(dicts):
+        c = Counter()
+        for d in dicts:
+            c.update(d)
+        return dict(c)
+    out = dict(parts[0])
+    out["n_maps"] = sum(p["n_maps"] for p in parts)
+    out["navigation"] = {m: add(p["navigation"][m] for p in parts) for m in out["modes"]}
+    out["first_map_quality"] = {m: add(p["first_map_quality"][m] for p in parts) for m in parts[0]["first_map_quality"]}
+    out["by_path_length"] = {m: {L: add(p["by_path_length"][m].get(L, {}) for p in parts)
+                                 for L in sorted({L for p in parts for L in p["by_path_length"][m]})}
+                             for m in out["modes"]}
+    out["seconds"] = max(p["seconds"] for p in parts)
+    return out
+
+
+def _starts(grid, nm: dict, k: int):
+    starts = list(enumerate(grid.start_cells()))
+    if nm.get("nav_starts") and nm["nav_starts"] < len(starts):       # a seeded subset of start cells
+        pick = np.random.default_rng([nm["seed"], k]).choice(len(starts), nm["nav_starts"], replace=False)
+        starts = [starts[j] for j in sorted(pick)]
+    return starts
+
+
+def _evaluate_oracle(cfg: dict, set_key: str, maps, limit, verbose) -> dict:
+    nm = cfg["multimap"][set_key]
+    tot, by_len = Counter(), defaultdict(Counter)
+    for k, grid in enumerate(maps):
+        env = GridWorld(grid, terminate_on_goal=True)
+        for i, start in _starts(grid, nm, k):
+            for _ in nm["nav_seeds"]:                  # deterministic; repeated so the episode counts match
+                e = run_oracle(env, start, cfg)
+                opt = e["success"] and e["steps"] == e["optimal"]
+                tot.update(episodes=1, success=int(e["success"]), optimal=int(opt), loops=int(e["loop"]), steps=e["steps"],
+                           collisions=e["collisions"], extra_steps=(e["steps"] - e["optimal"]) if e["success"] else 0)
+                by_len[e["optimal"]].update(episodes=1, success=int(e["success"]), optimal=int(opt))
+    return {"set": set_key, "title": nm.get("title", set_key), "n_maps": len(maps), "threshold": float("nan"), "nav_starts": nm.get("nav_starts"),
+            "max_nodes": 0, "modes": ["oracle"], "navigation": {"oracle": dict(tot)}, "first_map_quality": {},
+            "by_path_length": {"oracle": {int(k): dict(v) for k, v in sorted(by_len.items())}}, "seconds": 0}
+
+
 LABELS = {"privileged": "Picture of every cell (as before)", "imagine": "A: imagine from start + goal pictures",
-          "explore": "B: imagine, then correct while walking"}
+          "explore": "B: imagine, then correct while walking",
+          "oracle": "Oracle explorer (true walls once seen)"}
+
+
+def _threshold_text(t) -> str:
+    if isinstance(t, dict):
+        groups: dict[str, list[str]] = {}
+        for m, v in t.items():
+            if m == "oracle":                          # model-free, no threshold
+                continue
+            groups.setdefault(_threshold_text(v), []).append({"privileged": "every-cell pictures", "imagine": "A",
+                                                             "explore": "B"}.get(m, m))
+        return "; ".join(f"{' and '.join(ms)}: {txt}" for txt, ms in groups.items())
+    if isinstance(t, (tuple, list)):
+        return f"stay {t[0]:.2f} / merge {t[1]:.2f} (fog: blocked vs same / new node)"
+    return f"{t:.2f} (same / new node and unknown rule)" if t == t else "no model"
+
+
+def _budget_text(b: dict) -> str:
+    loop = "third visit to a cell = loop failure" if b["max_visits"] == 3 else "no loop rule"
+    usual = " (as every other run)" if b["max_visits"] == 3 and b["max_actions"] == 30 else ""
+    return f"Budget: {b['max_actions']} moves, {loop}{usual}."
 
 
 def _pct(c, t):
@@ -319,11 +543,10 @@ def render(res: dict) -> str:
     nav, q = res["navigation"], res["first_map_quality"]
     modes = res["modes"]
     out = [f"# Planning without privileged pictures: {res['title']}", "",
-           f"{res['n_maps']} maps, every free start cell, seeds as configured. Snapped P2, threshold "
-           f"{res['threshold']:.2f} (same / new node and unknown rule), at most {res['max_nodes']} nodes. "
-           + ("Budget: 30 moves, third visit to a cell = loop failure (as every other run)."
-              if res.get("budget", {}).get("name", "standard") == "standard"
-              else f"Explorer's budget: {res['budget']['max_actions']} moves, no loop rule."), "",
+           f"{res['n_maps']} maps, " + (f"{res['nav_starts']} random free start cells per map" if res.get("nav_starts")
+                                        else "every free start cell") + ", seeds as configured. Snapped P2, threshold "
+           + _threshold_text(res['threshold']) + f", at most {res['max_nodes']} nodes. "
+           + _budget_text(res.get("budget", {"max_actions": 30, "max_visits": 3})), "",
            "| | " + " | ".join(LABELS[m] for m in modes) + " |", "|---|" + "---|" * len(modes)]
     rows = [("navigation success", lambda t: _pct(t["success"], t["episodes"])),
             ("shortest path", lambda t: _pct(t["optimal"], t["episodes"])),
@@ -365,20 +588,26 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Plan from real pictures only: imagine the map (A) and explore (B).")
     parser.add_argument("--config", type=Path, default=Path("config_multimap_jepa.yaml"))
     parser.add_argument("--set", default="val_maze_maps")
-    parser.add_argument("--modes", default=",".join(MODES))
+    parser.add_argument("--modes", default=",".join(MODES), help=f"any of {','.join(ALL_MODES)}")
     parser.add_argument("--threshold", type=float, default=None, help="default: the calibrated unknown threshold")
-    parser.add_argument("--max-nodes", type=int, default=60)
+    parser.add_argument("--max-nodes", type=int, default=None, help="default: multimap.explore.max_nodes or 60")
     parser.add_argument("--limit", type=int, default=None, help="first N maps only")
     parser.add_argument("--name", default=None, help="output name (default: explore_<set>)")
     parser.add_argument("--budget", choices=["standard", "explorer"], default="standard",
-                        help="standard: 30 moves, 3rd visit = loop (as every other run); explorer: 60 moves, no loop rule")
+                        help="standard: 30 moves, 3rd visit = loop (as every other run); explorer: 60 moves, no loop rule "
+                             "(or multimap.explore.standard / explorer in the config)")
     parser.add_argument("--threads", type=int, default=2)
+    parser.add_argument("--workers", type=int, default=1, help="processes, split by map (one thread each)")
     args = parser.parse_args()
     cfg = load_config(args.config)
     torch.set_num_threads(args.threads)
-    if args.budget == "explorer":
-        cfg["planning"]["max_actions"], cfg["planning"]["max_visits"] = 60, 10 ** 6
-    res = evaluate(cfg, args.set, tuple(args.modes.split(",")), args.threshold, args.max_nodes, args.limit)
+    ex = cfg["multimap"].get("explore", {})
+    budget = ex.get(args.budget, {"max_actions": 30, "max_visits": 3} if args.budget == "standard"
+                    else {"max_actions": 60, "max_visits": 10 ** 6})
+    cfg["planning"]["max_actions"], cfg["planning"]["max_visits"] = budget["max_actions"], budget["max_visits"]
+    max_nodes = args.max_nodes or ex.get("max_nodes", 60)
+    res = evaluate_parallel(cfg, args.set, tuple(args.modes.split(",")), args.threshold, max_nodes, args.limit,
+                            args.workers)
     out = resolve(cfg["multimap"]["evaluation"]["results_dir"])
     name = args.name or f"explore_{args.set}" + ("_budget" if args.budget == "explorer" else "")
     res["budget"] = {"name": args.budget, "max_actions": cfg["planning"]["max_actions"],

@@ -25,7 +25,7 @@ def is_valid(grid_map: GridMap) -> bool:
 
 def generate_maps(n: int, seed: int, min_walls: int = 3, max_walls: int = 7, cols: int = 6, rows: int = 5,
                   goal: tuple[int, int] = DEFAULT_GOAL, max_tries: int = 100_000,
-                  exclude=()) -> list[GridMap]:
+                  exclude=(), view_radius: int | None = None) -> list[GridMap]:
     """`exclude`: wall sets that must not be generated (e.g. the layouts a model was trained / tested on)."""
     rng = np.random.default_rng(seed)
     cells = [(x, y) for y in range(rows) for x in range(cols) if (x, y) != tuple(goal)]
@@ -38,7 +38,7 @@ def generate_maps(n: int, seed: int, min_walls: int = 3, max_walls: int = 7, col
         walls = frozenset(cells[i] for i in rng.choice(len(cells), size=k, replace=False))
         if walls in seen:
             continue
-        m = GridMap(cols=cols, rows=rows, walls=walls, goal=tuple(goal))
+        m = GridMap(cols=cols, rows=rows, walls=walls, goal=tuple(goal), view_radius=view_radius)
         if is_valid(m):
             seen.add(walls)
             maps.append(m)
@@ -56,8 +56,8 @@ def save_maps(maps: list[GridMap], splits: dict, path: str | Path) -> Path:
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps({
-        "maps": [{"walls": sorted(list(w) for w in m.walls), "goal": list(m.goal), "cols": m.cols, "rows": m.rows}
-                 for m in maps],
+        "maps": [{"walls": sorted(list(w) for w in m.walls), "goal": list(m.goal), "cols": m.cols, "rows": m.rows,
+                  **({"view_radius": m.view_radius} if m.view_radius is not None else {})} for m in maps],
         **splits,
     }, indent=1) + "\n")
     return path
@@ -66,7 +66,7 @@ def save_maps(maps: list[GridMap], splits: dict, path: str | Path) -> Path:
 def load_maps(path: str | Path) -> tuple[list[GridMap], dict[str, list[int]]]:
     raw = json.loads(Path(path).read_text())
     maps = [GridMap(cols=m["cols"], rows=m["rows"], walls=frozenset(tuple(w) for w in m["walls"]),
-                    goal=tuple(m["goal"])) for m in raw["maps"]]
+                    goal=tuple(m["goal"]), view_radius=m.get("view_radius")) for m in raw["maps"]]
     return maps, {k: raw[k] for k in SPLITS}
 
 

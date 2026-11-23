@@ -1,0 +1,38 @@
+{
+ "threshold": 6.92564058303833,
+ "rule": "99.9% quantile of correct one-step snap distances, validation maps",
+ "quantile": 0.999,
+ "default_threshold": 6.058884859085083,
+ "median_one_step_error": 2.0196282863616943,
+ "val_maps": 15,
+ "windows": 58800,
+ "steps": [
+  {
+   "step": 1,
+   "correct": 58249,
+   "wrong": 551,
+   "correct_rejected_default": 0.003382032309567546,
+   "correct_rejected_calibrated": 0.000944222218407183,
+   "wrong_trusted_default": 1.0,
+   "wrong_trusted_calibrated": 1.0
+  },
+  {
+   "step": 2,
+   "correct": 55980,
+   "wrong": 2820,
+   "correct_rejected_default": 0.024312254376563057,
+   "correct_rejected_calibrated": 0.01180778849589139,
+   "wrong_trusted_default": 0.6634751773049645,
+   "wrong_trusted_calibrated": 0.7581560283687944
+  },
+  {
+   "step": 3,
+   "correct": 52146,
+   "wrong": 6654,
+   "correct_rejected_default": 0.04061672995052353,
+   "correct_rejected_calibrated": 0.018486556974648103,
+   "wrong_trusted_default": 0.6722272317403066,
+   "wrong_trusted_calibrated": 0.7908025247971145
+  }
+ ]
+}

@@ -1,0 +1,203 @@
+{
+ "set": "val_fog_mazes",
+ "title": "validation mazes (10 x 10, fog)",
+ "n_maps": 50,
+ "threshold": NaN,
+ "max_nodes": 0,
+ "modes": [
+  "oracle"
+ ],
+ "navigation": {
+  "oracle": {
+   "episodes": 1000,
+   "success": 1000,
+   "optimal": 332,
+   "loops": 0,
+   "steps": 25674,
+   "collisions": 0,
+   "extra_steps": 9508
+  }
+ },
+ "first_map_quality": {},
+ "by_path_length": {
+  "oracle": {
+   "1": {
+    "episodes": 16,
+    "success": 16,
+    "optimal": 16
+   },
+   "2": {
+    "episodes": 24,
+    "success": 24,
+    "optimal": 24
+   },
+   "3": {
+    "episodes": 24,
+    "success": 24,
+    "optimal": 24
+   },
+   "4": {
+    "episodes": 28,
+    "success": 28,
+    "optimal": 24
+   },
+   "5": {
+    "episodes": 30,
+    "success": 30,
+    "optimal": 28
+   },
+   "6": {
+    "episodes": 38,
+    "success": 38,
+    "optimal": 36
+   },
+   "7": {
+    "episodes": 20,
+    "success": 20,
+    "optimal": 18
+   },
+   "8": {
+    "episodes": 42,
+    "success": 42,
+    "optimal": 38
+   },
+   "9": {
+    "episodes": 36,
+    "success": 36,
+    "optimal": 18
+   },
+   "10": {
+    "episodes": 20,
+    "success": 20,
+    "optimal": 16
+   },
+   "11": {
+    "episodes": 30,
+    "success": 30,
+    "optimal": 14
+   },
+   "12": {
+    "episodes": 34,
+    "success": 34,
+    "optimal": 12
+   },
+   "13": {
+    "episodes": 28,
+    "success": 28,
+    "optimal": 14
+   },
+   "14": {
+    "episodes": 20,
+    "success": 20,
+    "optimal": 10
+   },
+   "15": {
+    "episodes": 42,
+    "success": 42,
+    "optimal": 12
+   },
+   "16": {
+    "episodes": 46,
+    "success": 46,
+    "optimal": 6
+   },
+   "17": {
+    "episodes": 40,
+    "success": 40,
+    "optimal": 4
+   },
+   "18": {
+    "episodes": 38,
+    "success": 38,
+    "optimal": 2
+   },
+   "19": {
+    "episodes": 50,
+    "success": 50,
+    "optimal": 4
+   },
+   "20": {
+    "episodes": 70,
+    "success": 70,
+    "optimal": 4
+   },
+   "21": {
+    "episodes": 26,
+    "success": 26,
+    "optimal": 2
+   },
+   "22": {
+    "episodes": 56,
+    "success": 56,
+    "optimal": 0
+   },
+   "23": {
+    "episodes": 46,
+    "success": 46,
+    "optimal": 0
+   },
+   "24": {
+    "episodes": 34,
+    "success": 34,
+    "optimal": 0
+   },
+   "25": {
+    "episodes": 54,
+    "success": 54,
+    "optimal": 0
+   },
+   "26": {
+    "episodes": 20,
+    "success": 20,
+    "optimal": 2
+   },
+   "27": {
+    "episodes": 26,
+    "success": 26,
+    "optimal": 0
+   },
+   "28": {
+    "episodes": 18,
+    "success": 18,
+    "optimal": 0
+   },
+   "29": {
+    "episodes": 10,
+    "success": 10,
+    "optimal": 2
+   },
+   "30": {
+    "episodes": 14,
+    "success": 14,
+    "optimal": 0
+   },
+   "31": {
+    "episodes": 8,
+    "success": 8,
+    "optimal": 0
+   },
+   "32": {
+    "episodes": 6,
+    "success": 6,
+    "optimal": 2
+   },
+   "33": {
+    "episodes": 4,
+    "success": 4,
+    "optimal": 0
+   },
+   "34": {
+    "episodes": 2,
+    "success": 2,
+    "optimal": 0
+   }
+  }
+ },
+ "seconds": 0,
+ "budget": {
+  "name": "explorer",
+  "max_actions": 300,
+  "max_visits": 1000000
+ },
+ "nav_starts": 10
+}

@@ -1,0 +1,8 @@
+{
+ "stay": 3.534767568111418,
+ "merge": 4.472933154106141,
+ "rule": "stay: 99% quantile of |pred - own cell| (blocked moves); merge: 1% quantile of |pred - nearest wrong cell| (real moves); validation split of the training maps",
+ "blocked_moves": 1316,
+ "real_moves": 3672,
+ "real_moves_within_merge_of_true_cell": 0.9395424836601307
+}

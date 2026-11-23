@@ -29,12 +29,17 @@ REFERENCE_START: Pos = (0, 4)
 
 @dataclass(frozen=True)
 class GridMap:
-    """Static layout: size, walls and goal. Holds the transition rules."""
+    """Static layout: size, walls and goal. Holds the transition rules.
+
+    view_radius: None = the robot sees the whole grid (every experiment up to REPORT section 11).
+    r = fog of war: every cell more than r cells from the robot (Chebyshev distance) is drawn as fog.
+    """
 
     cols: int = DEFAULT_COLS
     rows: int = DEFAULT_ROWS
     walls: frozenset[Pos] = field(default_factory=lambda: DEFAULT_WALLS)
     goal: Pos = DEFAULT_GOAL
+    view_radius: int | None = None
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "walls", frozenset(tuple(w) for w in self.walls))
@@ -48,6 +53,8 @@ class GridMap:
             raise ValueError(f"goal {self.goal} is outside the grid")
         if self.goal in self.walls:
             raise ValueError(f"goal {self.goal} is on a wall")
+        if self.view_radius is not None and self.view_radius < 0:
+            raise ValueError(f"view_radius must be >= 0 or None, got {self.view_radius}")
 
     def in_bounds(self, pos: Pos) -> bool:
         x, y = pos

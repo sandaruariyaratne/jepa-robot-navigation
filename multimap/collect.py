@@ -33,7 +33,7 @@ def collect(maps, episodes_per_map: int, steps: int, seed: int, cell_px: int = 8
     rows = {k: [] for k in FIELDS[3:]}
 
     def fid(obs, m, pos):
-        key = obs.tobytes()
+        key = (m, obs.tobytes())     # per map: under fog of war different maps can produce the same picture
         if key not in index:
             index[key] = len(frames)
             frames.append(obs)
@@ -68,9 +68,18 @@ def collect(maps, episodes_per_map: int, steps: int, seed: int, cell_px: int = 8
     return out
 
 
+def grid_kwargs(mm: dict) -> dict:
+    """Grid size, goal and view radius from a `multimap:` config section (defaults: 6 x 5, goal (5,0), full view)."""
+    return {"cols": mm.get("cols", 6), "rows": mm.get("rows", 5), "goal": tuple(mm.get("goal", (5, 0))),
+            "view_radius": mm.get("view_radius")}
+
+
 def load(path: str | Path) -> dict[str, np.ndarray]:
     with np.load(path, allow_pickle=False) as z:
-        return {k: z[k] for k in FIELDS}
+        data = {k: z[k] for k in FIELDS}
+    from .train import set_grid_from_frames
+    set_grid_from_frames(data["frames"])               # absolute cell ids follow the data's grid size
+    return data
 
 
 def coverage(data: dict, maps) -> dict:
@@ -91,7 +100,7 @@ def main() -> None:
     args = parser.parse_args()
     cfg = load_config(args.config)
     mm = cfg["multimap"]
-    maps = generate_maps(mm["n_maps"], cfg["seed"], mm["min_walls"], mm["max_walls"])
+    maps = generate_maps(mm["n_maps"], cfg["seed"], mm["min_walls"], mm["max_walls"], **grid_kwargs(mm))
     splits = split_maps(len(maps), mm["split_fractions"], cfg["seed"])
     maps_path = save_maps(maps, splits, resolve(mm["maps_path"]))
     maps, splits = load_maps(maps_path)

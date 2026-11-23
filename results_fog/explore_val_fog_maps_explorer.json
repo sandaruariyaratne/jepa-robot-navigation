@@ -1,0 +1,490 @@
+{
+ "set": "val_fog_maps",
+ "title": "validation maps (10 x 10, fog)",
+ "n_maps": 50,
+ "threshold": 6.92564058303833,
+ "max_nodes": 250,
+ "modes": [
+  "privileged",
+  "imagine",
+  "explore",
+  "oracle"
+ ],
+ "navigation": {
+  "privileged": {
+   "episodes": 1000,
+   "success": 1000,
+   "optimal": 958,
+   "loops": 0,
+   "steps": 9987,
+   "collisions": 7,
+   "rebuilds": 0,
+   "fallback_plans": 9,
+   "frontier_plans": 0,
+   "extra_steps": 151
+  },
+  "imagine": {
+   "episodes": 1000,
+   "success": 125,
+   "optimal": 47,
+   "loops": 0,
+   "steps": 271037,
+   "collisions": 173473,
+   "rebuilds": 0,
+   "fallback_plans": 252835,
+   "frontier_plans": 0,
+   "extra_steps": 7797
+  },
+  "explore": {
+   "episodes": 1000,
+   "success": 388,
+   "optimal": 64,
+   "loops": 0,
+   "steps": 223095,
+   "collisions": 33730,
+   "rebuilds": 41140,
+   "fallback_plans": 178575,
+   "frontier_plans": 43700,
+   "extra_steps": 36351
+  },
+  "oracle": {
+   "episodes": 1000,
+   "success": 1000,
+   "optimal": 682,
+   "loops": 0,
+   "steps": 11268,
+   "collisions": 0,
+   "rebuilds": 0,
+   "fallback_plans": 0,
+   "frontier_plans": 0,
+   "extra_steps": 1432
+  }
+ },
+ "first_map_quality": {
+  "imagine": {
+   "maps": 500,
+   "exact": 0,
+   "nodes": 3216,
+   "cells": 41660,
+   "covered": 3013,
+   "duplicates": 0,
+   "spurious": 203,
+   "edges": 12052,
+   "edges_correct": 7523,
+   "overflow": 0,
+   "d_start_exact": 23,
+   "d_start_unreachable": 473
+  },
+  "explore": {
+   "maps": 500,
+   "exact": 0,
+   "nodes": 3216,
+   "cells": 41660,
+   "covered": 3013,
+   "duplicates": 0,
+   "spurious": 203,
+   "edges": 12052,
+   "edges_correct": 7523,
+   "overflow": 0,
+   "d_start_exact": 23,
+   "d_start_unreachable": 473
+  }
+ },
+ "by_path_length": {
+  "privileged": {
+   "1": {
+    "episodes": 32,
+    "success": 32,
+    "optimal": 32
+   },
+   "2": {
+    "episodes": 26,
+    "success": 26,
+    "optimal": 26
+   },
+   "3": {
+    "episodes": 38,
+    "success": 38,
+    "optimal": 36
+   },
+   "4": {
+    "episodes": 36,
+    "success": 36,
+    "optimal": 34
+   },
+   "5": {
+    "episodes": 46,
+    "success": 46,
+    "optimal": 46
+   },
+   "6": {
+    "episodes": 56,
+    "success": 56,
+    "optimal": 54
+   },
+   "7": {
+    "episodes": 68,
+    "success": 68,
+    "optimal": 58
+   },
+   "8": {
+    "episodes": 62,
+    "success": 62,
+    "optimal": 62
+   },
+   "9": {
+    "episodes": 98,
+    "success": 98,
+    "optimal": 94
+   },
+   "10": {
+    "episodes": 80,
+    "success": 80,
+    "optimal": 78
+   },
+   "11": {
+    "episodes": 76,
+    "success": 76,
+    "optimal": 76
+   },
+   "12": {
+    "episodes": 82,
+    "success": 82,
+    "optimal": 76
+   },
+   "13": {
+    "episodes": 90,
+    "success": 90,
+    "optimal": 80
+   },
+   "14": {
+    "episodes": 60,
+    "success": 60,
+    "optimal": 58
+   },
+   "15": {
+    "episodes": 54,
+    "success": 54,
+    "optimal": 54
+   },
+   "16": {
+    "episodes": 32,
+    "success": 32,
+    "optimal": 32
+   },
+   "17": {
+    "episodes": 38,
+    "success": 38,
+    "optimal": 36
+   },
+   "18": {
+    "episodes": 22,
+    "success": 22,
+    "optimal": 22
+   },
+   "20": {
+    "episodes": 4,
+    "success": 4,
+    "optimal": 4
+   }
+  },
+  "imagine": {
+   "1": {
+    "episodes": 32,
+    "success": 32,
+    "optimal": 32
+   },
+   "2": {
+    "episodes": 26,
+    "success": 14,
+    "optimal": 10
+   },
+   "3": {
+    "episodes": 38,
+    "success": 10,
+    "optimal": 2
+   },
+   "4": {
+    "episodes": 36,
+    "success": 11,
+    "optimal": 3
+   },
+   "5": {
+    "episodes": 46,
+    "success": 6,
+    "optimal": 0
+   },
+   "6": {
+    "episodes": 56,
+    "success": 3,
+    "optimal": 0
+   },
+   "7": {
+    "episodes": 68,
+    "success": 6,
+    "optimal": 0
+   },
+   "8": {
+    "episodes": 62,
+    "success": 2,
+    "optimal": 0
+   },
+   "9": {
+    "episodes": 98,
+    "success": 8,
+    "optimal": 0
+   },
+   "10": {
+    "episodes": 80,
+    "success": 6,
+    "optimal": 0
+   },
+   "11": {
+    "episodes": 76,
+    "success": 3,
+    "optimal": 0
+   },
+   "12": {
+    "episodes": 82,
+    "success": 4,
+    "optimal": 0
+   },
+   "13": {
+    "episodes": 90,
+    "success": 8,
+    "optimal": 0
+   },
+   "14": {
+    "episodes": 60,
+    "success": 5,
+    "optimal": 0
+   },
+   "15": {
+    "episodes": 54,
+    "success": 1,
+    "optimal": 0
+   },
+   "16": {
+    "episodes": 32,
+    "success": 5,
+    "optimal": 0
+   },
+   "17": {
+    "episodes": 38,
+    "success": 0,
+    "optimal": 0
+   },
+   "18": {
+    "episodes": 22,
+    "success": 1,
+    "optimal": 0
+   },
+   "20": {
+    "episodes": 4,
+    "success": 0,
+    "optimal": 0
+   }
+  },
+  "explore": {
+   "1": {
+    "episodes": 32,
+    "success": 32,
+    "optimal": 32
+   },
+   "2": {
+    "episodes": 26,
+    "success": 23,
+    "optimal": 15
+   },
+   "3": {
+    "episodes": 38,
+    "success": 20,
+    "optimal": 4
+   },
+   "4": {
+    "episodes": 36,
+    "success": 24,
+    "optimal": 4
+   },
+   "5": {
+    "episodes": 46,
+    "success": 20,
+    "optimal": 1
+   },
+   "6": {
+    "episodes": 56,
+    "success": 28,
+    "optimal": 2
+   },
+   "7": {
+    "episodes": 68,
+    "success": 37,
+    "optimal": 0
+   },
+   "8": {
+    "episodes": 62,
+    "success": 30,
+    "optimal": 2
+   },
+   "9": {
+    "episodes": 98,
+    "success": 27,
+    "optimal": 2
+   },
+   "10": {
+    "episodes": 80,
+    "success": 27,
+    "optimal": 2
+   },
+   "11": {
+    "episodes": 76,
+    "success": 23,
+    "optimal": 0
+   },
+   "12": {
+    "episodes": 82,
+    "success": 20,
+    "optimal": 0
+   },
+   "13": {
+    "episodes": 90,
+    "success": 27,
+    "optimal": 0
+   },
+   "14": {
+    "episodes": 60,
+    "success": 11,
+    "optimal": 0
+   },
+   "15": {
+    "episodes": 54,
+    "success": 15,
+    "optimal": 0
+   },
+   "16": {
+    "episodes": 32,
+    "success": 12,
+    "optimal": 0
+   },
+   "17": {
+    "episodes": 38,
+    "success": 5,
+    "optimal": 0
+   },
+   "18": {
+    "episodes": 22,
+    "success": 5,
+    "optimal": 0
+   },
+   "20": {
+    "episodes": 4,
+    "success": 2,
+    "optimal": 0
+   }
+  },
+  "oracle": {
+   "1": {
+    "episodes": 32,
+    "success": 32,
+    "optimal": 32
+   },
+   "2": {
+    "episodes": 26,
+    "success": 26,
+    "optimal": 26
+   },
+   "3": {
+    "episodes": 38,
+    "success": 38,
+    "optimal": 38
+   },
+   "4": {
+    "episodes": 36,
+    "success": 36,
+    "optimal": 36
+   },
+   "5": {
+    "episodes": 46,
+    "success": 46,
+    "optimal": 42
+   },
+   "6": {
+    "episodes": 56,
+    "success": 56,
+    "optimal": 54
+   },
+   "7": {
+    "episodes": 68,
+    "success": 68,
+    "optimal": 58
+   },
+   "8": {
+    "episodes": 62,
+    "success": 62,
+    "optimal": 52
+   },
+   "9": {
+    "episodes": 98,
+    "success": 98,
+    "optimal": 84
+   },
+   "10": {
+    "episodes": 80,
+    "success": 80,
+    "optimal": 42
+   },
+   "11": {
+    "episodes": 76,
+    "success": 76,
+    "optimal": 50
+   },
+   "12": {
+    "episodes": 82,
+    "success": 82,
+    "optimal": 40
+   },
+   "13": {
+    "episodes": 90,
+    "success": 90,
+    "optimal": 50
+   },
+   "14": {
+    "episodes": 60,
+    "success": 60,
+    "optimal": 34
+   },
+   "15": {
+    "episodes": 54,
+    "success": 54,
+    "optimal": 22
+   },
+   "16": {
+    "episodes": 32,
+    "success": 32,
+    "optimal": 12
+   },
+   "17": {
+    "episodes": 38,
+    "success": 38,
+    "optimal": 4
+   },
+   "18": {
+    "episodes": 22,
+    "success": 22,
+    "optimal": 4
+   },
+   "20": {
+    "episodes": 4,
+    "success": 4,
+    "optimal": 2
+   }
+  }
+ },
+ "seconds": 333,
+ "budget": {
+  "name": "explorer",
+  "max_actions": 300,
+  "max_visits": 1000000
+ },
+ "nav_starts": 10
+}

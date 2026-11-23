@@ -36,8 +36,19 @@ from training.train_world_model import k_for_epoch
 from .collect import load
 from .maps import load_maps
 
-COLS, ROWS = 6, 5
+COLS, ROWS = 6, 5               # set from the data's frame size by set_grid (multimap.collect.load calls it)
 N_CELLS = COLS * ROWS
+
+
+def set_grid(cols: int, rows: int) -> None:
+    """Grid size for the absolute cell ids below (6 x 5 for every experiment before Level C, 10 x 10 there)."""
+    global COLS, ROWS, N_CELLS
+    COLS, ROWS, N_CELLS = cols, rows, cols * rows
+
+
+def set_grid_from_frames(frames, cell_px: int = 8) -> None:
+    _, h, w = frames.shape[1:]
+    set_grid(w // cell_px, h // cell_px)
 
 
 def cell_ids(pos: np.ndarray) -> np.ndarray:

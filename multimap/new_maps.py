@@ -36,7 +36,7 @@ from evaluation.navigation_test import report
 from models.encoder import load_encoder
 from models.predictor import load_predictor
 
-from .collect import collect, coverage, load
+from .collect import collect, coverage, grid_kwargs, load
 from .evaluate import RUNGS, _sum_edges, graph_metrics, navigate, prediction_metrics, world_for_map
 from .maps import generate_maps, load_maps, save_maps
 from .train import cell_ids, codebooks, latent_table, rollout_scores, windows
@@ -89,15 +89,19 @@ def new_maps_and_data(cfg: dict, key: str = "new_maps"):
         for other in nm.get("exclude_sets", []):            # e.g. keep validation layouts out of every test set
             exclude += [m.walls for m in load_maps(resolve(mm[other]["maps_path"]))[0]]
         if nm.get("select") == "longest_paths":
-            pool = generate_maps(nm["pool"], nm["seed"], lo, hi, exclude=exclude, max_tries=50 * nm["pool"])
+            pool = generate_maps(nm["pool"], nm["seed"], lo, hi, exclude=exclude, max_tries=50 * nm["pool"],
+                                 **grid_kwargs(mm))
             order = np.argsort([-mean_distance(m) for m in pool], kind="stable")
             maps = [pool[i] for i in order[: nm["n_maps"]]]
         else:
-            maps = generate_maps(nm["n_maps"], nm["seed"], lo, hi, exclude=exclude, max_tries=50 * nm["n_maps"] + 100_000)
+            maps = generate_maps(nm["n_maps"], nm["seed"], lo, hi, exclude=exclude,
+                                 max_tries=50 * nm["n_maps"] + 100_000, **grid_kwargs(mm))
         save_maps(maps, {"train": [], "val": [], "test": list(range(len(maps)))}, maps_path)
         maps, _ = load_maps(maps_path)
         data = collect(maps, nm["episodes_per_map"], nm["steps_per_episode"], nm["seed"], cfg["data"]["cell_px"])
         save_npz(data, data_path)
+        from .train import set_grid_from_frames
+        set_grid_from_frames(data["frames"], cfg["data"]["cell_px"])
     assert not {m.walls for m in maps} & {m.walls for m in old}, "a new map repeats an experiment layout"
     for other in nm.get("exclude_sets", []):
         assert not {m.walls for m in maps} & {m.walls for m in load_maps(resolve(mm[other]["maps_path"]))[0]}, other

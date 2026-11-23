@@ -1,0 +1,97 @@
+# Level C: fog of war on a 10 x 10 grid (REPORT section 12).
+# The robot sees only the cells within 1 step of itself (3 x 3); everything else is drawn as fog.
+# Same JEPA recipe as config_multimap_jepa.yaml, retrained on fogged 80 x 80 frames.
+#   python -m multimap.collect --config config_fog.yaml
+#   python -m multimap.train_jepa --config config_fog.yaml
+#   python -m multimap.calibrate --config config_fog.yaml
+#   python -m multimap.explore --config config_fog.yaml --set val_fog_maps
+# Only the fog_* / val_fog_* sets below belong to this grid; the 6 x 5 sets inherited from
+# config_multimap.yaml (new_maps, maze_maps, ...) must not be used with this config.
+extends: config_multimap_jepa.yaml
+
+multimap:
+  label: joint JEPA, 10 x 10, fog of war (radius 1)
+  cols: 10
+  rows: 10
+  goal: [9, 0]
+  view_radius: 1
+  n_maps: 100
+  min_walls: 10                        # 10-25% of the cells, like 3-7 of 30 on the 6 x 5 grid
+  max_walls: 25
+  episodes_per_map: 40
+  steps_per_episode: 100               # -> 4,000 transitions per map (~85 free cells, 340 cell-actions)
+  maps_path: data_fog/maps.json
+  data_path: data_fog/transitions.npz
+
+  jepa:
+    maps_per_step: 8                   # ~85 frames each, 80 x 80 pixels (~0.6 s per step on a laptop CPU)
+    steps: 8000                        # ~3x the states of the 6 x 5 grid; ~1.5 h
+    curriculum: [[1, 1], [2701, 2], [5401, 4]]
+    metrics: checkpoints_fog/jepa_metrics.json
+
+  encoder:
+    checkpoint: checkpoints_fog/encoder.pt
+  predictor:
+    checkpoint: checkpoints_fog/predictor.pt
+  evaluation:
+    results_dir: results_fog
+
+  explore:                             # multimap.explore on this grid
+    two_thresholds: true               # imagined maps (A, B) use stay / merge thresholds (multimap.explore.fog_thresholds);
+                                       # the every-cell codebook keeps the calibrated one. Chosen on validation, REPORT section 12
+    max_nodes: 250
+    standard: {max_actions: 100, max_visits: 3}       # the usual loop rule
+    explorer: {max_actions: 300, max_visits: 1000000}  # fog needs backtracking: generous budget, no loop rule
+
+  # Validation (choosing settings) and test sets, all 10 x 10 with fog, excluded from each other and training.
+  val_fog_maps:
+    title: validation maps (10 x 10, fog)
+    n_maps: 50
+    seed: 31
+    episodes_per_map: 40
+    steps_per_episode: 100
+    maps_path: data_fog_val/maps.json
+    data_path: data_fog_val/transitions.npz
+    nav_seeds: [0, 1]
+    nav_starts: 10                     # random free start cells per map (seeded)
+  val_fog_mazes:
+    title: validation mazes (10 x 10, fog)
+    n_maps: 50
+    select: longest_paths
+    pool: 2000
+    min_walls: 25
+    max_walls: 35
+    seed: 32
+    episodes_per_map: 40
+    steps_per_episode: 100
+    maps_path: data_fog_valmaze/maps.json
+    data_path: data_fog_valmaze/transitions.npz
+    nav_seeds: [0, 1]
+    nav_starts: 10
+    exclude_sets: [val_fog_maps]
+  fog_maps:
+    title: test maps (10 x 10, fog)
+    n_maps: 200
+    seed: 33
+    episodes_per_map: 40
+    steps_per_episode: 100
+    maps_path: data_fog_test/maps.json
+    data_path: data_fog_test/transitions.npz
+    nav_seeds: [0, 1]
+    nav_starts: 10
+    exclude_sets: [val_fog_maps, val_fog_mazes]
+  fog_mazes:
+    title: test mazes (10 x 10, fog)
+    n_maps: 100
+    select: longest_paths
+    pool: 4000
+    min_walls: 25
+    max_walls: 35
+    seed: 34
+    episodes_per_map: 40
+    steps_per_episode: 100
+    maps_path: data_fog_testmaze/maps.json
+    data_path: data_fog_testmaze/transitions.npz
+    nav_seeds: [0, 1]
+    nav_starts: 10
+    exclude_sets: [val_fog_maps, val_fog_mazes, fog_maps]

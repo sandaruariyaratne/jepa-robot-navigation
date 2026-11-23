@@ -23,6 +23,7 @@ COLORS: dict[str, tuple[int, int, int]] = {
     "wall": (127, 138, 150),
     "goal": (13, 122, 112),
     "robot": (42, 94, 168),
+    "fog": (52, 58, 68),       # cells outside the robot's view (GridMap.view_radius)
 }
 
 
@@ -69,6 +70,12 @@ class Renderer:
             if not self.map.is_free(pos):
                 raise ValueError(f"cannot render robot at {pos}: not a free cell")
             hwc = self._background.copy()
+            r = self.map.view_radius
+            if r is not None:                                   # fog of war around the robot
+                for y in range(self.map.rows):
+                    for x in range(self.map.cols):
+                        if max(abs(x - pos[0]), abs(y - pos[1])) > r:
+                            hwc[self._interior((x, y))] = COLORS["fog"]
             hwc[self._interior(pos)] = COLORS["robot"]
             frame = np.ascontiguousarray(hwc.transpose(2, 0, 1))
             frame.flags.writeable = False

@@ -35,7 +35,8 @@ from training.train_world_model import k_for_epoch
 
 from .collect import load
 from .maps import load_maps
-from .train import N_CELLS, cell_ids, codebooks, encode, frame_split, map_backgrounds, rollout_scores, windows
+from . import train as T
+from .train import cell_ids, codebooks, encode, frame_split, map_backgrounds, rollout_scores, set_grid_from_frames, windows
 
 
 @torch.no_grad()
@@ -54,6 +55,7 @@ def train(cfg: dict, data: dict, splits: dict, n_maps: int, verbose: bool = True
     seed = cfg["seed"]
     torch.manual_seed(seed)
     rng = np.random.default_rng(seed)
+    set_grid_from_frames(data["frames"])
     frames = torch.as_tensor(data["frames"])
     frames_of = {m: np.flatnonzero(data["frame_map"] == m) for m in range(n_maps)}
 
@@ -61,7 +63,7 @@ def train(cfg: dict, data: dict, splits: dict, n_maps: int, verbose: bool = True
     target_kind = j.get("target", "ema")        # ema: slow copy of the online encoder; online: the online encoder, stop-grad
     if objective not in ("jepa", "pixel") or target_kind not in ("ema", "online"):
         raise ValueError(f"unknown objective / target: {objective} / {target_kind}")
-    online = Encoder(j["latent_dim"])
+    online = Encoder(j["latent_dim"], tuple(data["frames"].shape[1:]))
     target = copy.deepcopy(online).requires_grad_(False)
     predictor = Predictor(j["latent_dim"], 4, j["hidden"], j["last_layer_init"])
     params = [*online.parameters(), *predictor.parameters()]
@@ -163,7 +165,7 @@ def train(cfg: dict, data: dict, splits: dict, n_maps: int, verbose: bool = True
                                 dim=-1)
     tr, va = frame_split(data, splits["train"]), frame_split(data, splits["val"])
     _, rep = probe_report(encode(target, data["frames"][tr]), cell_ids(data["frame_pos"][tr]),
-                          encode(target, data["frames"][va]), cell_ids(data["frame_pos"][va]), N_CELLS,
+                          encode(target, data["frames"][va]), cell_ids(data["frame_pos"][va]), T.N_CELLS,
                           **probe_kwargs(cfg))
     tb = table.numpy()
     return target, predictor, {

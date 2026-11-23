@@ -86,6 +86,25 @@ imagines the map from the start and goal pictures (A), or also corrects it
 with what it sees while walking (B; `--budget explorer` for 60 moves, no loop rule).
 Findings: [REPORT.md §8–11](REPORT.md#8-multi-map-experiments-held-out-layouts).
 
+### Level C: fog of war, 10 × 10
+
+```
+.venv/bin/python -m multimap.collect --config config_fog.yaml        # 100 fogged 10 x 10 maps -> data_fog/
+.venv/bin/python -m multimap.train_jepa --config config_fog.yaml     # ~1.5 h on a laptop CPU
+.venv/bin/python -m multimap.calibrate --config config_fog.yaml      # single threshold (every-cell pictures)
+# validation sets first (the test sets exclude them); each builds its maps on first use
+.venv/bin/python -m multimap.explore --config config_fog.yaml --set val_fog_maps  --modes privileged,imagine,explore,oracle --budget explorer --workers 7
+.venv/bin/python -m multimap.explore --config config_fog.yaml --set val_fog_mazes --modes privileged,imagine,explore,oracle --budget explorer --workers 7
+.venv/bin/python -m multimap.explore --config config_fog.yaml --set fog_maps  --modes privileged,imagine,explore,oracle --budget explorer --workers 7 --name explore_fog_maps_explorer
+.venv/bin/python -m multimap.explore --config config_fog.yaml --set fog_mazes --modes privileged,imagine,explore,oracle --budget explorer --workers 7 --name explore_fog_mazes_explorer
+```
+
+The robot sees only the 3 × 3 cells around itself; the rest of the frame is fog.
+Imagined maps use separate stay / merge thresholds, computed on first use into
+`checkpoints_fog/fog_thresholds.json`. `oracle` is a model-free explorer that knows
+the true walls once it has seen them. `--workers` splits the maps over processes;
+the counts are identical to one process. Findings: [REPORT.md §12](REPORT.md#12-level-c-fog-of-war-on-a-10--10-grid).
+
 ### Interactive web demo
 
 [web/](web/) runs the trained multi-map models in the browser: drag walls to build a map,
@@ -132,7 +151,7 @@ planning/       imagination (no simulator calls), latent graph + D(c), true-mode
 visualization/  replay dashboard
 tests/          pytest suite (one file per step)
 main.py         pipeline entry point
-config.yaml     every setting and the seed (config_v2.yaml, config_multimap*.yaml extend it)
+config.yaml     every setting and the seed (config_v2.yaml, config_multimap*.yaml, config_fog.yaml extend it)
 ```
 
 ## Tests

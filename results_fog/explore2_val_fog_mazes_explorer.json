@@ -1,0 +1,608 @@
+{
+ "set": "val_fog_mazes",
+ "title": "validation mazes (10 x 10, fog)",
+ "n_maps": 50,
+ "threshold": [
+  3.534767568111418,
+  4.472933154106141
+ ],
+ "max_nodes": 250,
+ "modes": [
+  "privileged",
+  "imagine",
+  "explore"
+ ],
+ "navigation": {
+  "privileged": {
+   "episodes": 1000,
+   "success": 420,
+   "optimal": 324,
+   "loops": 0,
+   "steps": 186102,
+   "collisions": 34780,
+   "rebuilds": 0,
+   "fallback_plans": 181821,
+   "frontier_plans": 0,
+   "extra_steps": 7220
+  },
+  "imagine": {
+   "episodes": 1000,
+   "success": 151,
+   "optimal": 122,
+   "loops": 0,
+   "steps": 255528,
+   "collisions": 233760,
+   "rebuilds": 0,
+   "fallback_plans": 31404,
+   "frontier_plans": 0,
+   "extra_steps": 108
+  },
+  "explore": {
+   "episodes": 1000,
+   "success": 969,
+   "optimal": 140,
+   "loops": 0,
+   "steps": 99778,
+   "collisions": 4239,
+   "rebuilds": 41566,
+   "fallback_plans": 7269,
+   "frontier_plans": 28108,
+   "extra_steps": 74968
+  }
+ },
+ "first_map_quality": {
+  "imagine": {
+   "maps": 500,
+   "exact": 0,
+   "nodes": 103973,
+   "cells": 35670,
+   "covered": 9116,
+   "duplicates": 721,
+   "spurious": 94136,
+   "edges": 39348,
+   "edges_correct": 21306,
+   "overflow": 290,
+   "d_start_exact": 72,
+   "d_start_unreachable": 76
+  },
+  "explore": {
+   "maps": 500,
+   "exact": 0,
+   "nodes": 103973,
+   "cells": 35670,
+   "covered": 9116,
+   "duplicates": 721,
+   "spurious": 94136,
+   "edges": 39348,
+   "edges_correct": 21306,
+   "overflow": 290,
+   "d_start_exact": 72,
+   "d_start_unreachable": 76
+  }
+ },
+ "by_path_length": {
+  "privileged": {
+   "1": {
+    "episodes": 16,
+    "success": 16,
+    "optimal": 16
+   },
+   "2": {
+    "episodes": 24,
+    "success": 24,
+    "optimal": 24
+   },
+   "3": {
+    "episodes": 24,
+    "success": 24,
+    "optimal": 24
+   },
+   "4": {
+    "episodes": 28,
+    "success": 26,
+    "optimal": 26
+   },
+   "5": {
+    "episodes": 30,
+    "success": 26,
+    "optimal": 26
+   },
+   "6": {
+    "episodes": 38,
+    "success": 35,
+    "optimal": 30
+   },
+   "7": {
+    "episodes": 20,
+    "success": 12,
+    "optimal": 12
+   },
+   "8": {
+    "episodes": 42,
+    "success": 28,
+    "optimal": 18
+   },
+   "9": {
+    "episodes": 36,
+    "success": 18,
+    "optimal": 16
+   },
+   "10": {
+    "episodes": 20,
+    "success": 15,
+    "optimal": 14
+   },
+   "11": {
+    "episodes": 30,
+    "success": 13,
+    "optimal": 10
+   },
+   "12": {
+    "episodes": 34,
+    "success": 11,
+    "optimal": 9
+   },
+   "13": {
+    "episodes": 28,
+    "success": 12,
+    "optimal": 10
+   },
+   "14": {
+    "episodes": 20,
+    "success": 13,
+    "optimal": 7
+   },
+   "15": {
+    "episodes": 42,
+    "success": 11,
+    "optimal": 8
+   },
+   "16": {
+    "episodes": 46,
+    "success": 11,
+    "optimal": 4
+   },
+   "17": {
+    "episodes": 40,
+    "success": 16,
+    "optimal": 6
+   },
+   "18": {
+    "episodes": 38,
+    "success": 8,
+    "optimal": 4
+   },
+   "19": {
+    "episodes": 50,
+    "success": 11,
+    "optimal": 6
+   },
+   "20": {
+    "episodes": 70,
+    "success": 24,
+    "optimal": 10
+   },
+   "21": {
+    "episodes": 26,
+    "success": 6,
+    "optimal": 4
+   },
+   "22": {
+    "episodes": 56,
+    "success": 15,
+    "optimal": 10
+   },
+   "23": {
+    "episodes": 46,
+    "success": 11,
+    "optimal": 8
+   },
+   "24": {
+    "episodes": 34,
+    "success": 2,
+    "optimal": 2
+   },
+   "25": {
+    "episodes": 54,
+    "success": 17,
+    "optimal": 10
+   },
+   "26": {
+    "episodes": 20,
+    "success": 2,
+    "optimal": 0
+   },
+   "27": {
+    "episodes": 26,
+    "success": 2,
+    "optimal": 2
+   },
+   "28": {
+    "episodes": 18,
+    "success": 2,
+    "optimal": 2
+   },
+   "29": {
+    "episodes": 10,
+    "success": 2,
+    "optimal": 0
+   },
+   "30": {
+    "episodes": 14,
+    "success": 0,
+    "optimal": 0
+   },
+   "31": {
+    "episodes": 8,
+    "success": 4,
+    "optimal": 4
+   },
+   "32": {
+    "episodes": 6,
+    "success": 2,
+    "optimal": 2
+   },
+   "33": {
+    "episodes": 4,
+    "success": 1,
+    "optimal": 0
+   },
+   "34": {
+    "episodes": 2,
+    "success": 0,
+    "optimal": 0
+   }
+  },
+  "imagine": {
+   "1": {
+    "episodes": 16,
+    "success": 16,
+    "optimal": 16
+   },
+   "2": {
+    "episodes": 24,
+    "success": 24,
+    "optimal": 24
+   },
+   "3": {
+    "episodes": 24,
+    "success": 22,
+    "optimal": 22
+   },
+   "4": {
+    "episodes": 28,
+    "success": 20,
+    "optimal": 18
+   },
+   "5": {
+    "episodes": 30,
+    "success": 17,
+    "optimal": 14
+   },
+   "6": {
+    "episodes": 38,
+    "success": 17,
+    "optimal": 11
+   },
+   "7": {
+    "episodes": 20,
+    "success": 6,
+    "optimal": 5
+   },
+   "8": {
+    "episodes": 42,
+    "success": 8,
+    "optimal": 4
+   },
+   "9": {
+    "episodes": 36,
+    "success": 8,
+    "optimal": 2
+   },
+   "10": {
+    "episodes": 20,
+    "success": 6,
+    "optimal": 4
+   },
+   "11": {
+    "episodes": 30,
+    "success": 3,
+    "optimal": 1
+   },
+   "12": {
+    "episodes": 34,
+    "success": 2,
+    "optimal": 0
+   },
+   "13": {
+    "episodes": 28,
+    "success": 0,
+    "optimal": 0
+   },
+   "14": {
+    "episodes": 20,
+    "success": 2,
+    "optimal": 1
+   },
+   "15": {
+    "episodes": 42,
+    "success": 0,
+    "optimal": 0
+   },
+   "16": {
+    "episodes": 46,
+    "success": 0,
+    "optimal": 0
+   },
+   "17": {
+    "episodes": 40,
+    "success": 0,
+    "optimal": 0
+   },
+   "18": {
+    "episodes": 38,
+    "success": 0,
+    "optimal": 0
+   },
+   "19": {
+    "episodes": 50,
+    "success": 0,
+    "optimal": 0
+   },
+   "20": {
+    "episodes": 70,
+    "success": 0,
+    "optimal": 0
+   },
+   "21": {
+    "episodes": 26,
+    "success": 0,
+    "optimal": 0
+   },
+   "22": {
+    "episodes": 56,
+    "success": 0,
+    "optimal": 0
+   },
+   "23": {
+    "episodes": 46,
+    "success": 0,
+    "optimal": 0
+   },
+   "24": {
+    "episodes": 34,
+    "success": 0,
+    "optimal": 0
+   },
+   "25": {
+    "episodes": 54,
+    "success": 0,
+    "optimal": 0
+   },
+   "26": {
+    "episodes": 20,
+    "success": 0,
+    "optimal": 0
+   },
+   "27": {
+    "episodes": 26,
+    "success": 0,
+    "optimal": 0
+   },
+   "28": {
+    "episodes": 18,
+    "success": 0,
+    "optimal": 0
+   },
+   "29": {
+    "episodes": 10,
+    "success": 0,
+    "optimal": 0
+   },
+   "30": {
+    "episodes": 14,
+    "success": 0,
+    "optimal": 0
+   },
+   "31": {
+    "episodes": 8,
+    "success": 0,
+    "optimal": 0
+   },
+   "32": {
+    "episodes": 6,
+    "success": 0,
+    "optimal": 0
+   },
+   "33": {
+    "episodes": 4,
+    "success": 0,
+    "optimal": 0
+   },
+   "34": {
+    "episodes": 2,
+    "success": 0,
+    "optimal": 0
+   }
+  },
+  "explore": {
+   "1": {
+    "episodes": 16,
+    "success": 16,
+    "optimal": 16
+   },
+   "2": {
+    "episodes": 24,
+    "success": 24,
+    "optimal": 22
+   },
+   "3": {
+    "episodes": 24,
+    "success": 24,
+    "optimal": 19
+   },
+   "4": {
+    "episodes": 28,
+    "success": 28,
+    "optimal": 18
+   },
+   "5": {
+    "episodes": 30,
+    "success": 30,
+    "optimal": 17
+   },
+   "6": {
+    "episodes": 38,
+    "success": 38,
+    "optimal": 23
+   },
+   "7": {
+    "episodes": 20,
+    "success": 20,
+    "optimal": 5
+   },
+   "8": {
+    "episodes": 42,
+    "success": 42,
+    "optimal": 11
+   },
+   "9": {
+    "episodes": 36,
+    "success": 36,
+    "optimal": 2
+   },
+   "10": {
+    "episodes": 20,
+    "success": 20,
+    "optimal": 2
+   },
+   "11": {
+    "episodes": 30,
+    "success": 29,
+    "optimal": 3
+   },
+   "12": {
+    "episodes": 34,
+    "success": 33,
+    "optimal": 1
+   },
+   "13": {
+    "episodes": 28,
+    "success": 28,
+    "optimal": 0
+   },
+   "14": {
+    "episodes": 20,
+    "success": 19,
+    "optimal": 1
+   },
+   "15": {
+    "episodes": 42,
+    "success": 41,
+    "optimal": 0
+   },
+   "16": {
+    "episodes": 46,
+    "success": 42,
+    "optimal": 0
+   },
+   "17": {
+    "episodes": 40,
+    "success": 40,
+    "optimal": 0
+   },
+   "18": {
+    "episodes": 38,
+    "success": 36,
+    "optimal": 0
+   },
+   "19": {
+    "episodes": 50,
+    "success": 50,
+    "optimal": 0
+   },
+   "20": {
+    "episodes": 70,
+    "success": 66,
+    "optimal": 0
+   },
+   "21": {
+    "episodes": 26,
+    "success": 23,
+    "optimal": 0
+   },
+   "22": {
+    "episodes": 56,
+    "success": 52,
+    "optimal": 0
+   },
+   "23": {
+    "episodes": 46,
+    "success": 45,
+    "optimal": 0
+   },
+   "24": {
+    "episodes": 34,
+    "success": 34,
+    "optimal": 0
+   },
+   "25": {
+    "episodes": 54,
+    "success": 54,
+    "optimal": 0
+   },
+   "26": {
+    "episodes": 20,
+    "success": 19,
+    "optimal": 0
+   },
+   "27": {
+    "episodes": 26,
+    "success": 22,
+    "optimal": 0
+   },
+   "28": {
+    "episodes": 18,
+    "success": 16,
+    "optimal": 0
+   },
+   "29": {
+    "episodes": 10,
+    "success": 10,
+    "optimal": 0
+   },
+   "30": {
+    "episodes": 14,
+    "success": 12,
+    "optimal": 0
+   },
+   "31": {
+    "episodes": 8,
+    "success": 8,
+    "optimal": 0
+   },
+   "32": {
+    "episodes": 6,
+    "success": 6,
+    "optimal": 0
+   },
+   "33": {
+    "episodes": 4,
+    "success": 4,
+    "optimal": 0
+   },
+   "34": {
+    "episodes": 2,
+    "success": 2,
+    "optimal": 0
+   }
+  }
+ },
+ "seconds": 6223,
+ "budget": {
+  "name": "explorer",
+  "max_actions": 300,
+  "max_visits": 1000000
+ },
+ "nav_starts": 10
+}

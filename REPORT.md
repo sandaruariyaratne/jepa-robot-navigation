@@ -27,7 +27,10 @@ metric but solves 79% of mazes, and removing the variance / covariance terms
 collapses the latent (§10). All of this uses a privileged picture of the robot on every
 free cell. Given only real observations (the start and goal pictures, then
 what it sees as it walks), imagination alone reaches 41–89% and an explorer
-that trusts experience over imagination 83–99.6% (§11).
+that trusts experience over imagination 83–99.6% (§11). With fog of war on a
+10 × 10 grid (only the 3 × 3 cells around the robot visible), that explorer
+still reaches the goal on 100% of test maps and 97.8% of test mazes, though
+with long detours. Imagination alone drops to 14–47% (§12).
 
 ## 1. Setup
 
@@ -446,25 +449,123 @@ multi-step imagination is only reliable 3–4 moves ahead.
 Files: `results_multimap_jepa/explore_*.md` (`_budget` = explorer's budget;
 `val_` = selection).
 
-## 12. What these results do not show
+## 12. Level C: fog of war on a 10 × 10 grid
 
-- **Other conditions.** Same grid size, fixed goal, deterministic dynamics,
-  noise-free frames; every test layout comes from the same kind of generator.
+In §11 every picture still shows the whole map. Here the robot sees only the
+3 × 3 cells around itself (view radius 1) and every other cell is drawn as fog
+(`config_fog.yaml`). The grid is 10 × 10 (goal top-right, 10–25 walls, 80 × 80
+frames), so routes are up to 3× longer than on 6 × 5. The robot's own cell is
+still visible in every frame, since the window sits where the robot is. What
+is hidden is the walls, the goal included, beyond one step.
+
+**Model.** Same joint-JEPA recipe, retrained on fogged frames: 70 training
+maps, 40 random episodes of 100 moves each, 8,000 steps, rollout length
+K = 1 → 2 → 4. On unseen validation maps a linear probe reads the robot's cell
+from the latent 100% of the time. One-step predictions snap to the right cell
+99.0% of the time, five-step rollouts 73.7%.
+
+**One threshold breaks imagination under fog.** A move into fog cannot be
+predicted exactly: the next picture shows walls the robot has never seen. The
+predicted latent lands between the possibilities, often nearer its own cell
+than the 6.93 calibrated threshold. So the §11 rule reads it as "blocked". On
+validation mazes, imagination stalled at 5.7 nodes for 71 real cells, and the
+goal was unreachable in 474 of 500 imagined maps. The fix is two thresholds,
+both measured on the validation split of the training maps:
+
+- **stay = 3.53.** 99% of blocked moves predict within this distance of their
+  own cell. Closer than that, the move is a bump.
+- **merge = 4.47.** Only 1% of real moves come this close to a wrong cell.
+  Within it, the prediction is that node; otherwise it is a new imagined node.
+  94% of real moves land within merge of their true cell.
+
+On validation (300 moves, no loop rule; 1,000 runs per set):
+
+| Validation | Rule | Every-cell pictures | A: imagine | B: explore |
+|---|---|---|---|---|
+| Maps | one threshold | **100%** | 12.5% | 38.8% |
+| Maps | stay / merge | 96.0% | **41.6%** | **100%** |
+| Mazes | one threshold | **73.8%** | 9.8% | 21.7% |
+| Mazes | stay / merge | 42.0% | **15.1%** | **96.9%** |
+
+So the frozen setting is per mode: imagined maps (A, B) use stay / merge, and
+the every-cell codebook keeps the calibrated single threshold. The comparison
+point is an **oracle explorer**: perfect perception, true walls known once
+seen, unseen cells assumed free, shortest route re-planned after every move.
+It needs no model and shows the cost of not seeing the map.
+
+**Test**, run once with those settings: 200 maps and 100 mazes (25–35 walls)
+never used for training or selection, 10 seeded start cells per map, two
+seeds. Each cell is success / shortest path:
+
+| Test set | Budget | Every-cell pictures | A: imagine | B: explore | Oracle explorer |
+|---|---|---|---|---|---|
+| Maps (4,000 runs) | 300 moves, no loop rule | 99.8% / 96.3% | 47.3% / 33.9% | **100% / 48.7%** | 100% / 64.9% |
+| Mazes (2,000 runs) | 300 moves, no loop rule | 81.0% / 70.3% | 14.0% / 12.4% | **97.8% / 14.7%** | 100% / 34.0% |
+| Maps | 100 moves, 3rd visit = loop | 99.5% / 96.3% | 41.8% / 33.9% | 80.0% / 48.7% | 99.0% / 64.9% |
+| Mazes | 100 moves, 3rd visit = loop | 75.8% / 70.3% | 13.2% / 12.4% | 21.7% / 14.7% | 78.8% / 34.0% |
+
+The 300-move budget is the primary one. Even the oracle has to walk back out
+of dead ends it could not see, and the usual loop rule fails it on 19% of
+validation mazes. That rule mostly measures how often a run backtracks, so
+the lower rows are for comparison only.
+
+**B works under fog.** With nothing but the start and goal pictures and what
+it sees as it walks, B reaches the goal on every test map and on 97.8% of
+test mazes. On mazes it stays at 96–100% for every route length up to 40
+moves.
+
+- **B does better than the every-cell pictures on mazes** (97.8% against 81.0%).
+  Those pictures still give every cell, but the edges between them are
+  imagined moves into fog, and the planner never corrects them. On mazes, 83%
+  of its plans find no route on the graph and fall back to latent search, and
+  its success drops to 72% for routes over 20 moves. B replaces imagined edges
+  with the moves it really made, and walks into a wall on 3.5% of moves.
+- **B pays in detours.** On mazes it averages 72 extra moves per success
+  against the oracle's 10, and 93 moves per run against 26. Only 15% of its
+  maze runs follow a shortest path (oracle 34%). About a quarter of its plans
+  head for cells it has only imagined, because its map has no route to the goal
+  yet. The difference from the oracle is the price of seeing walls through a
+  model instead of exactly.
+
+**A does not work under fog.** Imagining the whole map from two pictures means
+imagining walls that are hidden. The imagined maze before the first move has
+3× as many nodes as there are cells, mostly imagined fog contents matching no
+real cell. It finds 24% of the real cells (maps: 47%), and steps-to-goal from
+the start is right in 14% of mazes. A walks into a wall on about 90% of moves.
+It succeeds on short routes (91% of mazes up to 3 moves) and almost never
+beyond 10.
+
+Mazes have more walls than any training map (25–35 against 10–25). B handles
+them; the every-cell planner's 81% is partly that shift.
+
+Files: `results_fog/explore_fog_*` (test), `explore2_val_fog_*` (validation,
+stay / merge), `explore_val_fog_*` (validation, one threshold),
+`oracle_val_fog_*`. Thresholds: `checkpoints_fog/fog_thresholds.json`.
+
+## 13. What these results do not show
+
+- **Other conditions.** Two grid sizes (6 × 5, and 10 × 10 under fog), fixed goal,
+  deterministic dynamics, noise-free frames; every test layout comes from the
+  same kind of generator.
 - **A good long-horizon model.** Raw rollouts drift (69% correct at 10 steps on
   new maps); navigation is perfect because each imagined step is snapped to a
   per-map codebook, i.e. the planner works on a learned graph.
-- **Exploration under partial observability.** In §11 the robot still sees
-  the whole map in every picture; only the pictures of itself elsewhere are
-  withheld. A limited view would need memory and a different encoder.
+- **Full partial observability.** Under fog (§12) the walls are hidden but
+  the robot's position is not: the view window shows where it is. A robot that
+  had to work out where it is would need memory in the encoder; here the
+  explorer's map is the only memory.
 - **A fully matched baseline.** The pixel model saw a quarter as many windows
   per step; ablations have 2 seeds, not 3–5.
 
-## 13. Next steps
+## 14. Next steps
 
 1. Longer reliable imagination: train with longer rollouts (K = 8–12) or a
    loss that keeps distinct cells farther apart than the multi-step drift, and
    re-run §11; A is the direct measure.
 2. Pixel baseline at 512 windows per step, and a checkpoint metric based on
    validation navigation rather than snap@5.
-3. Remaining step 12 items: random goals, a learned goal-distance head, moving
-   obstacles, partial observability, stochastic dynamics.
+3. Under fog, fewer detours: B pays 7–10× the oracle's extra moves. Training on
+   longer rollouts into fog, or predicting a distribution over what fog hides,
+   would make imagined frontier cells closer to the real ones.
+4. Remaining step 12 items: random goals, a learned goal-distance head, moving
+   obstacles, a hidden robot position, stochastic dynamics.
